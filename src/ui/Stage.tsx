@@ -38,12 +38,16 @@ export function Stage(props: StageProps) {
   useEffect(() => {
     const canvas = canvasRef.current!;
     const renderer = new Renderer(canvas);
+    (window as unknown as { __glow?: Renderer }).__glow = renderer;
     const cam = camRef.current;
     let raf = 0;
     let last = performance.now();
     let manualUntil = 0;
     let vel = 0; // pan momentum, world units / s
     const t0 = performance.now();
+    // Auto-quality: if frames are consistently slow, drop the bloom pass.
+    let slowFrames = 0;
+    let sampled = 0;
 
     const fit = () => {
       const r = canvas.getBoundingClientRect();
@@ -114,7 +118,20 @@ export function Stage(props: StageProps) {
     canvas.addEventListener('wheel', onWheel, { passive: false });
 
     const frame = (now: number) => {
-      const dt = Math.min(0.05, (now - last) / 1000);
+      const rawDt = (now - last) / 1000;
+      const dt = Math.min(0.05, rawDt);
+      if (renderer.bloom && !document.hidden && rawDt < 0.5) {
+        sampled++;
+        if (rawDt > 0.026) slowFrames++;
+        if (sampled >= 120) {
+          if (slowFrames > 70) {
+            renderer.bloom = false;
+            console.info('[glowfall] slow frames: bloom disabled');
+          }
+          sampled = 0;
+          slowFrames = 0;
+        }
+      }
       last = now;
       const p = propsRef.current;
       const sim = p.sim;

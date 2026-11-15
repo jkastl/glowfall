@@ -78,6 +78,9 @@ export function testPart(def: PartDef, opts: { count?: number; timeout?: number;
       notes.push(`marble ${m.id} never exited, last at (${p.x.toFixed(2)}, ${p.y.toFixed(2)})`);
     }
   }
+  for (const r of sim.rescueLog.slice(0, 4)) {
+    notes.push(`rescue (${r.reason}) at local (${r.x.toFixed(2)}, ${r.y.toFixed(2)}) t=${r.t.toFixed(1)}s`);
+  }
   const medianTransit = transit[Math.floor(transit.length / 2)] ?? NaN;
   const maxTransit = transit[transit.length - 1] ?? NaN;
   const ok = exited === count && badExits === 0 && sim.rescues === 0;

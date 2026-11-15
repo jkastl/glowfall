@@ -53,6 +53,8 @@ export class Simulation {
   finishedAt = 0;
   spawned = 0;
   rescues = 0;
+  /** Where/why rescues happened (debugging part designs). */
+  rescueLog: { t: number; x: number; y: number; part: string; reason: string }[] = [];
   readonly marbleCount: number;
   readonly spawnInterval: number;
   private nextSpawnAt = 0;
@@ -276,7 +278,7 @@ export class Simulation {
 
     // Escaped or broken?
     if (!Number.isFinite(p.x) || !Number.isFinite(p.y) || p.x < -0.6 || p.x > COLUMN_W + 0.6 || p.y > this.totalHeight + 3) {
-      this.rescue(m, this.partIndexAt(m.bestY));
+      this.rescue(m, this.partIndexAt(m.bestY), 'escaped');
       return;
     }
 
@@ -300,13 +302,13 @@ export class Simulation {
       m.body.applyLinearImpulse(Vec2(dir * k, -k * 0.6), m.body.getWorldCenter(), true);
       m.nudges++;
       m.stillTime = 0;
-      if (m.nudges > 6) this.rescue(m, this.partIndexAt(p.y) + 1);
+      if (m.nudges > 6) this.rescue(m, this.partIndexAt(p.y) + 1, 'stuck');
     }
 
     // No downward progress for a long time (endless bouncing, trapped loops).
     const progressLimit = held ? 40 : 18;
     if (this.t - m.bestYAt > progressLimit) {
-      this.rescue(m, this.partIndexAt(p.y) + 1);
+      this.rescue(m, this.partIndexAt(p.y) + 1, 'no-progress');
     }
   }
 
@@ -327,7 +329,16 @@ export class Simulation {
   }
 
   /** Quietly teleport a marble to the inlet of part `index` (fades back in). */
-  rescue(m: Marble, index: number) {
+  rescue(m: Marble, index: number, reason = 'manual') {
+    const from = m.body.getPosition();
+    const fromPart = this.parts[this.partIndexAt(from.y)];
+    this.rescueLog.push({
+      t: this.t,
+      x: from.x,
+      y: fromPart ? from.y - fromPart.originY : from.y,
+      part: fromPart?.def.id ?? '?',
+      reason,
+    });
     const i = Math.max(0, Math.min(index, this.parts.length - 1));
     const target = this.parts[i];
     const x = PORT_CENTER + (this.rng() - 0.5) * 0.5;

@@ -189,7 +189,7 @@ export class Renderer {
     const A = this.bloomA;
     const B = this.bloomB;
     a.globalCompositeOperation = 'copy';
-    a.imageSmoothingQuality = 'medium';
+    a.imageSmoothingQuality = 'low';
     a.drawImage(this.canvas, 0, 0, A.width, A.height);
     a.globalCompositeOperation = 'multiply';
     a.drawImage(A, 0, 0);
