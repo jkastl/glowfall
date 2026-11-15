@@ -50,3 +50,10 @@ v1 is deliberately simple: build a column of parts, release 30 marbles, watch th
 - **Physics in a Worker** if big tracks get heavy.
 - **Deterministic replays** (fixed seed + recorded inputs).
 - **Visual regression tests**: screenshot each part via `?solo=` and diff.
+
+## Engine asks from the part builders
+Several part agents independently asked for these. All of them worked around the gaps:
+- **Calm surfaces**: Box2D mixes restitution with `max`, so the marble's 0.35 overrides any "soft" wall. Add an opt-in per-fixture rule (e.g. `min` for marble↔wall) instead of parts installing their own contact listeners (turnstile and vortex do this today).
+- **`ctx.chime(note, x, y)`**: let a mechanism play a tuned note on an event (a bucket tipping, a pocket emptying), not just on impacts.
+- **`ctx.marblesIn(aabb)`**: a list of marbles in a region, instead of tracking them by sensors or by circle radius.
+- **Curved `funnelToOutlet`**: bell-shaped walls that arrive vertical at the port (several parts hand-roll this).
