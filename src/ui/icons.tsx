@@ -54,3 +54,11 @@ export const IconDown = () => (
     <path d="m6 9 6 6 6-6" />
   </svg>
 );
+export const IconTune = () => (
+  <svg viewBox="0 0 24 24" {...s}>
+    <path d="M5 4v6M5 14v6M12 4v10M12 18v2M19 4v2M19 10v10" />
+    <circle cx="5" cy="12" r="2" />
+    <circle cx="12" cy="16" r="2" />
+    <circle cx="19" cy="8" r="2" />
+  </svg>
+);

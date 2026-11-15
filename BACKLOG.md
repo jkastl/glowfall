@@ -4,8 +4,8 @@ v1 is deliberately simple: build a column of parts, release 30 marbles, watch th
 
 ## Run controls
 - **Speed control**: slow-mo / 1× / 2× (the sim already takes a `speed` factor; it just needs UI).
-- **Gravity slider**: from moon-drift to brisk. Needs a sanity check that every part still passes the harness at the extremes.
-- **Bounciness / friction**: global multipliers on restitution & friction.
+- ~~**Gravity slider**~~ and ~~**bounciness**~~: done in v0.2.0 (0.3×–2× gravity, 0–2× bounce, live mid-run).
+- **Friction**: a global multiplier, like bounce. Needs the same extremes sweep (`tests/feel.test.ts`).
 - **Marble count & release rate**: 5 → 100, trickle vs. flood.
 - **Marble size**: a few sizes, possibly mixed in one run (the port is ~4 diameters wide, so this caps out around 1.5×).
 - **Loop mode**: an elevator/lift carries marbles from the pool back to the source so it runs forever as a screensaver. Includes a "lead marble" camera mode and an auto-drift camera.

@@ -15,6 +15,7 @@ import { PART_MAP, PARTS } from '../parts';
 import { PRESETS } from '../tracks/presets';
 import { IconClose, IconGrip } from './icons';
 import { partThumb } from './thumbs';
+import { VERSION_LABEL } from '../version';
 
 export interface PanelProps {
   track: TrackItem[];
@@ -84,7 +85,9 @@ export function Panel({ track, selected, onChange, onSelect, onAdd, onPreset }: 
   return (
     <aside className="panel">
       <header className="panel-head">
-        <h1>Glowfall</h1>
+        <h1>
+          Glowfall <span className="version">{VERSION_LABEL}</span>
+        </h1>
         <select
           className="presets"
           value=""

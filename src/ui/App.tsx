@@ -4,13 +4,15 @@ import { Simulation } from '../engine/sim';
 import type { TrackItem } from '../engine/types';
 import { PART_MAP } from '../parts';
 import { PRESETS } from '../tracks/presets';
-import { IconBack, IconMute, IconPause, IconPlay, IconReplay, IconSound } from './icons';
+import { DEFAULT_FEEL, FeelPanel, type Feel } from './FeelPanel';
+import { IconBack, IconMute, IconPause, IconPlay, IconReplay, IconSound, IconTune } from './icons';
 import { Panel } from './Panel';
 import { Stage } from './Stage';
 
 type Mode = 'build' | 'run' | 'paused' | 'done';
 
 const STORE_KEY = 'glowfall.track.v1';
+const FEEL_KEY = 'glowfall.feel.v1';
 const MARBLES = 30;
 const PANEL_W = 340;
 
@@ -35,10 +37,24 @@ function loadTrack(): TrackItem[] {
   return fromPreset(PRESETS[0].id);
 }
 
-function makeSim(track: TrackItem[]) {
+function loadFeel(): Feel {
+  try {
+    const raw = localStorage.getItem(FEEL_KEY);
+    if (raw) {
+      const f = JSON.parse(raw) as Partial<Feel>;
+      const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
+      return { gravity: num(f.gravity, 1), bounce: num(f.bounce, 1) };
+    }
+  } catch {
+    /* storage unavailable */
+  }
+  return DEFAULT_FEEL;
+}
+
+function makeSim(track: TrackItem[], feel: Feel = DEFAULT_FEEL) {
   return new Simulation(
     track.map((item) => ({ item, def: PART_MAP.get(item.partId)! })),
-    { marbleCount: MARBLES, seed: Math.floor(Math.random() * 1e9) },
+    { marbleCount: MARBLES, seed: Math.floor(Math.random() * 1e9), gravity: feel.gravity, bounce: feel.bounce },
   );
 }
 
@@ -48,6 +64,8 @@ export function App() {
   const [mode, setMode] = useState<Mode>('build');
   const [runSim, setRunSim] = useState<Simulation | null>(null);
   const [muted, setMuted] = useState(false);
+  const [feel, setFeel] = useState<Feel>(loadFeel);
+  const [feelOpen, setFeelOpen] = useState(false);
   const [collected, setCollected] = useState(0);
   const [focus, setFocus] = useState<{ y: number; n: number } | null>(null);
   const audio = useRef<AmbientAudio>(null as unknown as AmbientAudio);
@@ -63,6 +81,17 @@ export function App() {
       /* ignore */
     }
   }, [track]);
+
+  // Feel changes apply live to the running sim and persist.
+  useEffect(() => {
+    runSim?.setGravity(feel.gravity);
+    runSim?.setBounce(feel.bounce);
+    try {
+      localStorage.setItem(FEEL_KEY, JSON.stringify(feel));
+    } catch {
+      /* ignore */
+    }
+  }, [feel, runSim]);
 
   // Camera glides to the selected part while building.
   const select = useCallback(
@@ -98,7 +127,7 @@ export function App() {
   };
 
   const run = () => {
-    const s = makeSim(track);
+    const s = makeSim(track, feel);
     s.onHit((e) => audio.current.hit(e));
     s.onFinish(() => {
       setMode('done');
@@ -172,10 +201,20 @@ export function App() {
               {collected} / {MARBLES} <span className="dim">at rest</span>
             </div>
           )}
+          <button
+            className={`icon-btn${feelOpen ? ' on' : ''}`}
+            onClick={() => setFeelOpen(!feelOpen)}
+            aria-label="Gravity and bounce"
+            aria-expanded={feelOpen}
+          >
+            <IconTune />
+          </button>
           <button className="icon-btn" onClick={toggleMute} aria-label={muted ? 'Unmute' : 'Mute'}>
             {muted ? <IconMute /> : <IconSound />}
           </button>
         </div>
+
+        {feelOpen && <FeelPanel feel={feel} onChange={setFeel} />}
 
         <div className="controls">
           {building ? (

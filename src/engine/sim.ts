@@ -31,7 +31,16 @@ export interface SimOptions {
   colors?: number[];
   /** Skip the hopper/collector (used by the part test harness & thumbnails). */
   bare?: boolean;
+  /** Physics feel; both can also be changed live with setGravity/setBounce. */
+  gravity?: number;
+  bounce?: number;
 }
+
+/** Slider ranges for the run-feel controls (1 = as designed). */
+export const GRAVITY_RANGE = { min: 0.3, max: 2, step: 0.05 } as const;
+export const BOUNCE_RANGE = { min: 0, max: 2, step: 0.05 } as const;
+/** Restitution never exceeds this, however lively the bounce setting. */
+const MAX_RESTITUTION = 0.9;
 
 const TRAIL_LEN = 18;
 
@@ -63,6 +72,10 @@ export class Simulation {
   private pendingContacts: { a: Fixture; b: Fixture; c: Contact | null; begin: boolean; speed: number; x: number; y: number }[] = [];
   private nextId = 1;
   private colors: number[];
+  /** Gravity multiplier (1 = GRAVITY). */
+  gravity = 1;
+  /** Restitution multiplier applied to each new contact (1 = as designed, 0 = dead). */
+  bounce = 1;
   hitListeners: ((e: HitEvent) => void)[] = [];
   finishListeners: (() => void)[] = [];
   /** Fixtures with an active flash, so decay is cheap. */
@@ -74,6 +87,8 @@ export class Simulation {
     this.rng = makeRng(opts.seed ?? 1234);
     this.colors = opts.colors ?? MARBLE_COLORS.map((_, i) => i);
     this.world = new World({ gravity: Vec2(0, GRAVITY) });
+    this.setGravity(opts.gravity ?? 1);
+    this.bounce = opts.bounce ?? 1;
 
     const seq: { uid: string; def: PartDef }[] = [];
     if (!opts.bare) seq.push({ uid: '__hopper', def: hopper });
@@ -96,8 +111,25 @@ export class Simulation {
       f.setUserData(data);
     }
 
-    this.world.on('begin-contact', (c) => this.onContact(c, true));
+    // Registered after the parts, so part listeners (e.g. turnstile's calm contacts) run first and
+    // the bounce multiplier scales whatever they decided.
+    this.world.on('begin-contact', (c) => {
+      if (this.bounce !== 1) c.setRestitution(Math.min(MAX_RESTITUTION, c.getRestitution() * this.bounce));
+      this.onContact(c, true);
+    });
     this.world.on('end-contact', (c) => this.onContact(c, false));
+  }
+
+  /** Live gravity change; wakes everything so resting bodies feel it. */
+  setGravity(scale: number) {
+    this.gravity = scale;
+    this.world.setGravity(Vec2(0, GRAVITY * scale));
+    for (let b = this.world.getBodyList(); b; b = b.getNext()) if (b.isDynamic()) b.setAwake(true);
+  }
+
+  /** Live bounce change; applies to contacts that begin from now on. */
+  setBounce(scale: number) {
+    this.bounce = scale;
   }
 
   onHit(fn: (e: HitEvent) => void) {
@@ -294,7 +326,9 @@ export class Simulation {
     if (speed < 0.12) m.stillTime += dt;
     else m.stillTime = Math.max(0, m.stillTime - dt * 2);
 
-    const stillLimit = held ? 25 : 1.4;
+    // Low gravity slows everything down; give the anti-jam proportionally more patience.
+    const patience = this.gravity < 1 ? 1 / Math.sqrt(this.gravity) : 1;
+    const stillLimit = (held ? 25 : 1.4) * patience;
     if (m.stillTime > stillLimit) {
       // Gentle nudge: mostly sideways, a little lift. Escalates with repeated nudges.
       const dir = this.rng() < 0.5 ? -1 : 1;
@@ -306,7 +340,7 @@ export class Simulation {
     }
 
     // No downward progress for a long time (endless bouncing, trapped loops).
-    const progressLimit = held ? 40 : 18;
+    const progressLimit = (held ? 40 : 18) * patience;
     if (this.t - m.bestYAt > progressLimit) {
       this.rescue(m, this.partIndexAt(p.y) + 1, 'no-progress');
     }

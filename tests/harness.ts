@@ -19,10 +19,10 @@ export interface PartReport {
  * Drop `count` marbles into a single part (no hopper/collector) with a variety of
  * entry positions/speeds, and check they all leave through the bottom port.
  */
-export function testPart(def: PartDef, opts: { count?: number; timeout?: number; seed?: number } = {}): PartReport {
+export function testPart(def: PartDef, opts: { count?: number; timeout?: number; seed?: number; gravity?: number; bounce?: number } = {}): PartReport {
   const count = opts.count ?? 24;
   const timeout = opts.timeout ?? 120;
-  const sim = new Simulation([{ item: { uid: 'u0', partId: def.id }, def }], { bare: true, seed: opts.seed ?? 7 });
+  const sim = new Simulation([{ item: { uid: 'u0', partId: def.id }, def }], { bare: true, seed: opts.seed ?? 7, gravity: opts.gravity, bounce: opts.bounce });
   sim.started = false; // we spawn manually
   let rs = (opts.seed ?? 7) * 9973;
   const rnd = () => ((rs = (rs * 16807) % 2147483647) / 2147483647);
@@ -40,8 +40,10 @@ export function testPart(def: PartDef, opts: { count?: number; timeout?: number;
     if (spawned < count && sim.t >= nextSpawn) {
       // Mix of gentle and fast entries, as produced by real upstream parts.
       const x = PORT_X0 + MARBLE_R + rnd() * (PORT_X1 - PORT_X0 - 2 * MARBLE_R);
-      const vy = rnd() < 0.5 ? rnd() * 2 : 4 + rnd() * 9;
-      const vx = (rnd() - 0.5) * 2.5;
+      // Upstream parts feel the same gravity, so arrival speeds scale with sqrt(g).
+      const gs = Math.sqrt(opts.gravity ?? 1);
+      const vy = (rnd() < 0.5 ? rnd() * 2 : 4 + rnd() * 9) * gs;
+      const vx = (rnd() - 0.5) * 2.5 * gs;
       const m = sim.spawnAt(x, -MARBLE_R - 0.05, vx, vy, spawned % 5);
       entered.set(m.id, sim.t);
       spawned++;
