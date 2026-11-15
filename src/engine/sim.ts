@@ -1,0 +1,365 @@
+import { Circle, Edge, Vec2, World, type Body, type Contact, type Fixture } from 'planck';
+import { buildPart, fixtureData, makeRng, type FixtureData } from './build';
+import {
+  COLUMN_W,
+  GRAVITY,
+  MARBLE_COLORS,
+  MARBLE_FIXTURE,
+  MARBLE_R,
+  PORT_CENTER,
+  STEP_DT,
+} from './constants';
+import { collector, hopper } from './fixtures';
+import type { BuiltPart, Marble, PartDef, TrackItem } from './types';
+
+export interface HitEvent {
+  x: number;
+  y: number;
+  /** Approach speed in world units / s. */
+  speed: number;
+  /** Pentatonic degree, or undefined for an untuned click. */
+  note?: number;
+  hue: number;
+  kind: 'wall' | 'marble';
+}
+
+export interface SimOptions {
+  marbleCount?: number;
+  spawnInterval?: number;
+  seed?: number;
+  /** Optional palette restriction (indices into MARBLE_COLORS). */
+  colors?: number[];
+  /** Skip the hopper/collector (used by the part test harness & thumbnails). */
+  bare?: boolean;
+}
+
+const TRAIL_LEN = 18;
+
+/** Part accent hues drift through the bioluminescent band as you descend. */
+function partHue(i: number): number {
+  const band = [186, 200, 168, 230, 262, 290, 316, 176, 250, 148];
+  return band[i % band.length];
+}
+
+export class Simulation {
+  world: World;
+  frame: Body;
+  parts: BuiltPart[] = [];
+  marbles: Marble[] = [];
+  totalHeight = 0;
+  t = 0;
+  started = false;
+  finished = false;
+  finishedAt = 0;
+  spawned = 0;
+  rescues = 0;
+  readonly marbleCount: number;
+  readonly spawnInterval: number;
+  private nextSpawnAt = 0;
+  private acc = 0;
+  private rng: () => number;
+  private pendingContacts: { a: Fixture; b: Fixture; c: Contact | null; begin: boolean; speed: number; x: number; y: number }[] = [];
+  private nextId = 1;
+  private colors: number[];
+  hitListeners: ((e: HitEvent) => void)[] = [];
+  finishListeners: (() => void)[] = [];
+  /** Fixtures with an active flash, so decay is cheap. */
+  private flashing = new Set<FixtureData>();
+
+  constructor(track: { item: TrackItem; def: PartDef }[], opts: SimOptions = {}) {
+    this.marbleCount = opts.marbleCount ?? 30;
+    this.spawnInterval = opts.spawnInterval ?? 0.45;
+    this.rng = makeRng(opts.seed ?? 1234);
+    this.colors = opts.colors ?? MARBLE_COLORS.map((_, i) => i);
+    this.world = new World({ gravity: Vec2(0, GRAVITY) });
+
+    const seq: { uid: string; def: PartDef }[] = [];
+    if (!opts.bare) seq.push({ uid: '__hopper', def: hopper });
+    for (const t of track) seq.push({ uid: t.item.uid, def: t.def });
+    if (!opts.bare) seq.push({ uid: '__collector', def: collector });
+
+    let y = 0;
+    seq.forEach((s, i) => {
+      const built = buildPart(this.world, s.def, s.uid, y, partHue(i), i);
+      this.parts.push(built);
+      y += s.def.height;
+    });
+    this.totalHeight = y;
+
+    // Column side walls: frame the whole track so nothing can escape sideways.
+    const frame = (this.frame = this.world.createBody({ type: 'static' }));
+    for (const x of [0, COLUMN_W]) {
+      const f = frame.createFixture(new Edge(Vec2(x, -30), Vec2(x, y + 2)), { friction: 0.1, restitution: 0.2 });
+      const data: FixtureData = { style: { kind: 'line', hue: 220, base: 0.12, width: 0.05, flash: 0 } };
+      f.setUserData(data);
+    }
+
+    this.world.on('begin-contact', (c) => this.onContact(c, true));
+    this.world.on('end-contact', (c) => this.onContact(c, false));
+  }
+
+  onHit(fn: (e: HitEvent) => void) {
+    this.hitListeners.push(fn);
+  }
+  onFinish(fn: () => void) {
+    this.finishListeners.push(fn);
+  }
+
+  start() {
+    this.started = true;
+    this.nextSpawnAt = this.t;
+  }
+
+  /** Spawn a marble at an arbitrary world position (harness use). */
+  spawnAt(x: number, y: number, vx = 0, vy = 0, colorIndex?: number): Marble {
+    const ci = colorIndex ?? this.colors[Math.floor(this.rng() * this.colors.length)];
+    const color = MARBLE_COLORS[ci];
+    const body = this.world.createBody({
+      type: 'dynamic',
+      position: Vec2(x, y),
+      bullet: true,
+      linearDamping: 0.02,
+      angularDamping: 0.05,
+    });
+    body.setLinearVelocity(Vec2(vx, vy));
+    const m: Marble = {
+      id: this.nextId++,
+      body,
+      hue: color.hue,
+      group: color.group,
+      colorIndex: ci,
+      trail: [],
+      collected: false,
+      stillTime: 0,
+      nudges: 0,
+      bestY: y,
+      bestYAt: this.t,
+      fade: 0,
+      lastSoundAt: -1,
+    };
+    const f = body.createFixture(new Circle(MARBLE_R), MARBLE_FIXTURE);
+    const data: FixtureData = { marble: m };
+    f.setUserData(data);
+    this.marbles.push(m);
+    return m;
+  }
+
+  private onContact(c: Contact, begin: boolean) {
+    const a = c.getFixtureA();
+    const b = c.getFixtureB();
+    let speed = 0;
+    let x = 0;
+    let y = 0;
+    if (begin) {
+      const wm = c.getWorldManifold(null);
+      if (wm && wm.pointCount > 0) {
+        const p = wm.points[0];
+        x = p.x;
+        y = p.y;
+        const va = a.getBody().getLinearVelocityFromWorldPoint(p);
+        const vb = b.getBody().getLinearVelocityFromWorldPoint(p);
+        speed = Math.abs((vb.x - va.x) * wm.normal.x + (vb.y - va.y) * wm.normal.y);
+      }
+    }
+    // The world is locked during callbacks; handle after the step.
+    this.pendingContacts.push({ a, b, c: null, begin, speed, x, y });
+  }
+
+  private flushContacts() {
+    for (const pc of this.pendingContacts) {
+      const da = fixtureData(pc.a);
+      const db = fixtureData(pc.b);
+      const ma = da?.marble;
+      const mb = db?.marble;
+      if (!ma && !mb) continue;
+      const marble = (ma ?? mb)!;
+      const other = ma ? db : da;
+
+      if (other?.sensor) {
+        if (pc.begin) other.sensor.onEnter(marble);
+        else other.sensor.onExit?.(marble);
+        continue;
+      }
+      if (!pc.begin) continue;
+
+      if (ma && mb) {
+        if (pc.speed > 0.8 && this.t - ma.lastSoundAt > 0.06) {
+          ma.lastSoundAt = this.t;
+          this.emitHit({ x: pc.x, y: pc.y, speed: pc.speed, hue: ma.hue, kind: 'marble' });
+        }
+        continue;
+      }
+
+      const style = other?.style;
+      if (!style) continue;
+      if (pc.speed > 0.5) {
+        style.flash = Math.min(1, (style.flash ?? 0) + Math.min(1, pc.speed / 5));
+        this.flashing.add(other!);
+      }
+      if (pc.speed > 0.9 && this.t - marble.lastSoundAt > 0.07) {
+        marble.lastSoundAt = this.t;
+        this.emitHit({ x: pc.x, y: pc.y, speed: pc.speed, note: style.note, hue: style.hue ?? marble.hue, kind: 'wall' });
+      }
+    }
+    this.pendingContacts.length = 0;
+  }
+
+  private emitHit(e: HitEvent) {
+    for (const fn of this.hitListeners) fn(e);
+  }
+
+  /** Advance by real frame time (seconds), using fixed sub-steps. `speed` scales time. */
+  advance(frameDt: number, speed = 1) {
+    this.acc += Math.min(frameDt, 0.1) * speed;
+    let n = 0;
+    while (this.acc >= STEP_DT && n < 12) {
+      this.step(STEP_DT);
+      this.acc -= STEP_DT;
+      n++;
+    }
+    if (n === 12) this.acc = 0;
+  }
+
+  step(dt: number) {
+    this.t += dt;
+
+    if (this.started && this.spawned < this.marbleCount && this.t >= this.nextSpawnAt) {
+      const jitter = (this.rng() - 0.5) * 0.6;
+      const m = this.spawnAt(PORT_CENTER + jitter, -0.8, 0, 0.5);
+      this.spawned++;
+      m.fade = 0;
+      this.nextSpawnAt = this.t + this.spawnInterval;
+    }
+
+    for (const p of this.parts) for (const u of p.updates) u(dt, this.t);
+
+    this.world.step(dt, 8, 3);
+    this.flushContacts();
+
+    // Flash decay.
+    const decay = Math.exp(-dt * 2.2);
+    for (const d of this.flashing) {
+      d.style!.flash = (d.style!.flash ?? 0) * decay;
+      if (d.style!.flash! < 0.01) {
+        d.style!.flash = 0;
+        this.flashing.delete(d);
+      }
+    }
+
+    for (const m of this.marbles) this.tendMarble(m, dt);
+
+    if (
+      !this.finished &&
+      this.started &&
+      this.spawned >= this.marbleCount &&
+      this.marbleCount > 0 &&
+      this.marbles.every((m) => m.collected)
+    ) {
+      if (!this.finishedAt) this.finishedAt = this.t;
+      if (this.t - this.finishedAt > 1.2) {
+        this.finished = true;
+        for (const fn of this.finishListeners) fn();
+      }
+    }
+  }
+
+  /** Trails, fades and anti-jam care for one marble. */
+  private tendMarble(m: Marble, dt: number) {
+    const p = m.body.getPosition();
+    m.fade = Math.min(1, m.fade + dt * 3);
+
+    const tr = m.trail;
+    tr.push({ x: p.x, y: p.y });
+    if (tr.length > TRAIL_LEN) tr.shift();
+
+    if (m.collected) return;
+
+    // Escaped or broken?
+    if (!Number.isFinite(p.x) || !Number.isFinite(p.y) || p.x < -0.6 || p.x > COLUMN_W + 0.6 || p.y > this.totalHeight + 3) {
+      this.rescue(m, this.partIndexAt(m.bestY));
+      return;
+    }
+
+    if (p.y > m.bestY + 0.4) {
+      m.bestY = p.y;
+      m.bestYAt = this.t;
+    }
+
+    const v = m.body.getLinearVelocity();
+    const speed = Math.hypot(v.x, v.y);
+    const held = this.inHoldZone(p.x, p.y);
+
+    if (speed < 0.12) m.stillTime += dt;
+    else m.stillTime = Math.max(0, m.stillTime - dt * 2);
+
+    const stillLimit = held ? 25 : 1.4;
+    if (m.stillTime > stillLimit) {
+      // Gentle nudge: mostly sideways, a little lift. Escalates with repeated nudges.
+      const dir = this.rng() < 0.5 ? -1 : 1;
+      const k = 0.06 * (1 + m.nudges * 0.6);
+      m.body.applyLinearImpulse(Vec2(dir * k, -k * 0.6), m.body.getWorldCenter(), true);
+      m.nudges++;
+      m.stillTime = 0;
+      if (m.nudges > 6) this.rescue(m, this.partIndexAt(p.y) + 1);
+    }
+
+    // No downward progress for a long time (endless bouncing, trapped loops).
+    const progressLimit = held ? 40 : 18;
+    if (this.t - m.bestYAt > progressLimit) {
+      this.rescue(m, this.partIndexAt(p.y) + 1);
+    }
+  }
+
+  private inHoldZone(x: number, y: number) {
+    for (const p of this.parts) {
+      if (y < p.originY || y > p.originY + p.height) continue;
+      for (const z of p.holdZones) if (x >= z.x0 && x <= z.x1 && y >= z.y0 && y <= z.y1) return true;
+    }
+    return false;
+  }
+
+  partIndexAt(y: number): number {
+    for (let i = 0; i < this.parts.length; i++) {
+      const p = this.parts[i];
+      if (y < p.originY + p.height) return i;
+    }
+    return this.parts.length - 1;
+  }
+
+  /** Quietly teleport a marble to the inlet of part `index` (fades back in). */
+  rescue(m: Marble, index: number) {
+    const i = Math.max(0, Math.min(index, this.parts.length - 1));
+    const target = this.parts[i];
+    const x = PORT_CENTER + (this.rng() - 0.5) * 0.5;
+    const y = target.originY + 0.35;
+    m.body.setPosition(Vec2(x, y));
+    m.body.setLinearVelocity(Vec2(0, 0.5));
+    m.body.setAngularVelocity(0);
+    m.body.setAwake(true);
+    m.trail.length = 0;
+    m.fade = 0;
+    m.stillTime = 0;
+    m.nudges = 0;
+    m.bestY = y;
+    m.bestYAt = this.t;
+    this.rescues++;
+  }
+
+  /** Where the camera should look: the heart of the moving flock. */
+  focusY(): number {
+    const active = this.marbles.filter((m) => !m.collected);
+    if (active.length === 0) {
+      if (this.marbles.length > 0) return this.totalHeight - 5;
+      return 6;
+    }
+    const ys = active.map((m) => m.body.getPosition().y).sort((a, b) => a - b);
+    // Lean toward the leaders a bit so you see where things are heading.
+    return ys[Math.floor(ys.length * 0.6)] + 1.5;
+  }
+
+  collectedCount() {
+    let n = 0;
+    for (const m of this.marbles) if (m.collected) n++;
+    return n;
+  }
+}
