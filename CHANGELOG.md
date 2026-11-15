@@ -2,6 +2,12 @@
 
 All notable changes to Glowfall. Versions follow [semver](https://semver.org/); each release is tagged `vX.Y.Z`.
 
+## 1.0.1 (2026-11-15)
+
+- New home: the repo is now `jkastl/glowfall`, and the app is at https://jkastl.github.io/glowfall/, with no more `/docs/` redirect. The built site lives at the repo root, and the source page is `app.html`.
+- Canonical link, link-preview tags and visit counts all point at `/glowfall/`.
+- Removed an unused file left over from the Vite starter template.
+
 ## 1.0.0 (2026-11-15)
 
 - **Installable app (PWA)**: Add to Home Screen on the iPad for a full-screen app with its own icon that works offline.

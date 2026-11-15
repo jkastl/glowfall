@@ -2,7 +2,7 @@
 
 A zen, bioluminescent 2D marble run. Stack parts into a single column, drop the marbles in, and watch them drift down through the dark.
 
-**Play:** https://jkastl.github.io/gbc/ (built for iPad in landscape, also fine on desktop)
+**Play:** https://jkastl.github.io/glowfall/ (built for iPad in landscape, also fine on desktop)
 
 The sliders button (top right) sets **speed** (0.25×–3×), **gravity** (0.3×–2×) and **bounce** (0–2×). Changes apply live, even mid-run, and are remembered.
 
@@ -14,7 +14,7 @@ The sliders button (top right) sets **speed** (0.25×–3×), **gravity** (0.3×
 npm install
 npm run dev          # http://localhost:5173
 npm test             # physics harness: every part must pass marbles through its ports
-npm run build        # outputs the GitHub Pages site into /docs
+npm run build        # builds the site into dist/ (tools/deploy-build.sh publishes it)
 ```
 
 `tests/feel.test.ts` runs every part and every starter track at the four corners of the gravity/bounce range.
@@ -35,7 +35,7 @@ Drop a file in `src/parts/` that default-exports a `PartDef` (see `src/engine/ty
 
 ## Offline and updates
 
-`sw/sw.js` is the service worker. At build time the `glowfall-sw` plugin in `vite.config.ts` writes it to `docs/sw.js`, filled in with the version and commit and with the list of files to precache. Each build is its own cache, so every deploy counts as a new version.
+`sw/sw.js` is the service worker. At build time the `glowfall-sw` plugin in `vite.config.ts` writes it to `sw.js` in the build, filled in with the version and commit and with the list of files to precache. Each build is its own cache, so every deploy counts as a new version.
 
 - The app checks for a new `sw.js` when it launches, whenever it comes back to the foreground, and hourly.
 - A new version downloads in the background and waits. The app shows "New version ready · Update" in the builder or after a run finishes, never mid-run (`src/pwa.ts`).
@@ -47,8 +47,14 @@ The service worker only registers in production builds, so `npm run dev` never c
 
 ## Deploying
 
-GitHub Pages serves `main`. Commit the source, then run `tools/deploy-build.sh` (it builds from the committed HEAD into `docs/`), commit `docs/`, and push.
+GitHub Pages serves the repo root of `main` (Settings → Pages: "Deploy from a branch", `main`, `/ (root)`), at https://jkastl.github.io/glowfall/.
 
-If Pages is set to serve the repo root, `index.html` redirects visitors to `docs/`, so the address ends in `/gbc/docs/`. Set **Settings → Pages → Branch → folder** to `/docs` to serve the app straight from `/gbc/`. Do this before installing the app on a device: an installed copy stays tied to the address it was installed from, so it would stop receiving updates if the folder changed later. Otherwise everything works either way: the canonical link, preview image (`og.png`, kept at both the root and in `public/`) and visit counting all use `/gbc/`.
+That's why the source page is `app.html`: the root `index.html` is the built app, along with `assets/`, `sw.js`, the manifest and the icons. Don't edit those by hand. `.deployed` lists them so each deploy can clear out the last one. `npm run dev` still serves the app at `/`.
+
+To deploy:
+
+1. Commit the source.
+2. Run `tools/deploy-build.sh`. It builds from the committed HEAD and copies the result to the repo root.
+3. Commit the built files and push.
 
 Visits are counted with GoatCounter (`src/stats.ts`, same site code as jkastl.github.io). It only runs on github.io.

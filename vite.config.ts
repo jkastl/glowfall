@@ -1,6 +1,6 @@
 import react from '@vitejs/plugin-react';
 import { execSync } from 'node:child_process';
-import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
 
@@ -16,9 +16,26 @@ function gitSha() {
 const VERSION = pkg.version;
 const SHA = gitSha();
 
-/** Writes docs/sw.js from sw/sw.js with this build's version and every output file to precache. */
+/**
+ * The source page is app.html, because the repo root's index.html is the *built* app (that's what
+ * GitHub Pages serves). In dev, `/` is served from app.html; in a build it's renamed to index.html.
+ */
+function appEntry(): Plugin {
+  return {
+    name: 'glowfall-entry',
+    configureServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        if (req.url === '/' || req.url?.startsWith('/?')) req.url = '/app.html' + req.url.slice(1);
+        next();
+      });
+    },
+  };
+}
+
+/** Renames dist/app.html to index.html, then writes dist/sw.js from sw/sw.js with this build's
+ * version and every output file to precache. */
 function serviceWorker(): Plugin {
-  let outDir = 'docs';
+  let outDir = 'dist';
   return {
     name: 'glowfall-sw',
     apply: 'build',
@@ -26,6 +43,7 @@ function serviceWorker(): Plugin {
       outDir = resolve(c.root, c.build.outDir);
     },
     closeBundle() {
+      renameSync(join(outDir, 'app.html'), join(outDir, 'index.html'));
       const files: string[] = [];
       const walk = (dir: string) => {
         for (const f of readdirSync(dir)) {
@@ -45,15 +63,14 @@ function serviceWorker(): Plugin {
   };
 }
 
-// base './' + outDir 'docs' → works on GitHub Pages whether it serves the repo root
-// (index.html redirects to docs/) or the /docs folder directly.
+// Builds into dist/; tools/deploy-build.sh copies that to the repo root, which GitHub Pages serves.
 export default defineConfig({
   base: './',
-  plugins: [react(), serviceWorker()],
+  plugins: [react(), appEntry(), serviceWorker()],
   define: {
     __APP_VERSION__: JSON.stringify(VERSION),
     __GIT_SHA__: JSON.stringify(SHA),
     __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)),
   },
-  build: { outDir: 'docs', emptyOutDir: true },
+  build: { outDir: 'dist', emptyOutDir: true, rollupOptions: { input: 'app.html' } },
 });

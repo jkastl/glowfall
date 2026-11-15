@@ -1,12 +1,11 @@
 // Page counts with GoatCounter (no cookies, no personal data), same site code as jkastl.github.io.
-// Only counts on github.io, so local dev and tests never do. Loaded from the built app only, so the
-// repo-root redirect page doesn't double count.
+// Only counts on github.io, so local dev and tests never do. 
 export function countVisit() {
   const code = 'jkastl';
   if (typeof location === 'undefined' || !/\.github\.io$/.test(location.hostname)) return;
   const endpoint = `https://${code}.goatcounter.com/count`;
   const w = window as unknown as { goatcounter?: Record<string, unknown> };
-  w.goatcounter = { ...(w.goatcounter ?? {}), endpoint, path: '/gbc/' };
+  w.goatcounter = { ...(w.goatcounter ?? {}), endpoint, path: '/glowfall/' };
   const s = document.createElement('script');
   s.async = true;
   s.src = 'https://gc.zgo.at/count.v4.js';
