@@ -3,7 +3,7 @@
 v1 is deliberately simple: build a column of parts, release 30 marbles, watch them settle. Here's the pile of "wouldn't it be nice", roughly grouped and ordered by bang-for-buck within each group.
 
 ## Run controls
-- **Speed control**: slow-mo / 1× / 2× (the sim already takes a `speed` factor; it just needs UI).
+- ~~**Speed control**~~: done in v1.0.0 (0.25×–3×).
 - ~~**Gravity slider**~~ and ~~**bounciness**~~: done in v0.2.0 (0.3×–2× gravity, 0–2× bounce, live mid-run).
 - **Friction**: a global multiplier, like bounce. Needs the same extremes sweep (`tests/feel.test.ts`).
 - **Marble count & release rate**: 5 → 100, trickle vs. flood.
@@ -17,7 +17,7 @@ v1 is deliberately simple: build a column of parts, release 30 marbles, watch th
 - **Camera modes**: follow flock (current), follow leader, follow straggler, free/manual, slow cinematic auto-pan, zoom-to-fit the whole track.
 - **Depth effects**: parallax background layers, faint caustics, bubbles kicked up by fast marbles, particles on impact.
 - **Part accent hues**: let users tint individual parts.
-- **Performance knobs**: bloom on/off, trail length, mote count (an auto-quality governor that watches frame time).
+- **Performance knobs**: bloom on/off, trail length, mote count. (An auto-quality governor already drops bloom on slow frames.)
 - **Haptics** on supported devices for big impacts.
 
 ## Building
@@ -46,7 +46,7 @@ v1 is deliberately simple: build a column of parts, release 30 marbles, watch th
 - **Timer / stats**: run duration, most-hit part, longest-airborne marble.
 
 ## Tech
-- **PWA / offline**: installable on the iPad home screen, full-screen, works without network.
+- ~~**PWA / offline**~~: done in v1.0.0.
 - **Physics in a Worker** if big tracks get heavy.
 - **Deterministic replays** (fixed seed + recorded inputs).
 - **Visual regression tests**: screenshot each part via `?solo=` and diff.

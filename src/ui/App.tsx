@@ -8,6 +8,8 @@ import { DEFAULT_FEEL, FeelPanel, type Feel } from './FeelPanel';
 import { IconBack, IconMute, IconPause, IconPlay, IconReplay, IconSound, IconTune } from './icons';
 import { Panel } from './Panel';
 import { Stage } from './Stage';
+import { justUpdatedFrom, registerServiceWorker } from '../pwa';
+import { VERSION } from '../version';
 
 type Mode = 'build' | 'run' | 'paused' | 'done';
 
@@ -15,6 +17,9 @@ const STORE_KEY = 'glowfall.track.v1';
 const FEEL_KEY = 'glowfall.feel.v1';
 const MARBLES = 30;
 const PANEL_W = 340;
+
+// Read once per page load (outside React, so StrictMode's double render can't swallow it).
+const UPDATED_FROM = justUpdatedFrom();
 
 let uidCounter = 0;
 const newUid = () => `p${Date.now().toString(36)}${(uidCounter++).toString(36)}`;
@@ -43,7 +48,7 @@ function loadFeel(): Feel {
     if (raw) {
       const f = JSON.parse(raw) as Partial<Feel>;
       const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
-      return { gravity: num(f.gravity, 1), bounce: num(f.bounce, 1) };
+      return { speed: num(f.speed, 1), gravity: num(f.gravity, 1), bounce: num(f.bounce, 1) };
     }
   } catch {
     /* storage unavailable */
@@ -66,6 +71,15 @@ export function App() {
   const [muted, setMuted] = useState(false);
   const [feel, setFeel] = useState<Feel>(loadFeel);
   const [feelOpen, setFeelOpen] = useState(false);
+  const [applyUpdate, setApplyUpdate] = useState<(() => void) | null>(null);
+  const [toast, setToast] = useState<string | null>(UPDATED_FROM ? `Updated to v${VERSION}` : null);
+
+  useEffect(() => registerServiceWorker((apply) => setApplyUpdate(() => apply)), []);
+  useEffect(() => {
+    if (!toast) return;
+    const id = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(id);
+  }, [toast]);
   const [collected, setCollected] = useState(0);
   const [focus, setFocus] = useState<{ y: number; n: number } | null>(null);
   const audio = useRef<AmbientAudio>(null as unknown as AmbientAudio);
@@ -190,12 +204,18 @@ export function App() {
           editing={building}
           highlightUid={building ? selected : null}
           finale={mode === 'done'}
+          speed={feel.speed}
           focus={focus}
           insetLeft={building ? PANEL_W : 0}
           onPick={(uid) => select(uid === selected ? null : uid)}
         />
 
         <div className="hud-top">
+          {applyUpdate && (building || mode === 'done') && (
+            <button className="update-pill" onClick={applyUpdate}>
+              New version ready <span className="update-go">Update</span>
+            </button>
+          )}
           {!building && (
             <div className="counter" aria-live="polite">
               {collected} / {MARBLES} <span className="dim">at rest</span>
@@ -204,7 +224,7 @@ export function App() {
           <button
             className={`icon-btn${feelOpen ? ' on' : ''}`}
             onClick={() => setFeelOpen(!feelOpen)}
-            aria-label="Gravity and bounce"
+            aria-label="Run settings"
             aria-expanded={feelOpen}
           >
             <IconTune />
@@ -241,6 +261,7 @@ export function App() {
           )}
         </div>
 
+        {toast && <div className="toast">{toast}</div>}
         {mode === 'done' && <div className="finale-msg">All the light has settled.</div>}
       </main>
     </div>
