@@ -9,6 +9,8 @@ export interface Camera {
   y: number;
   /** Pixels (CSS) per world unit. */
   scale: number;
+  /** Horizontal shift of the column center from the canvas center, CSS px. */
+  offsetX?: number;
 }
 
 export interface DrawOptions {
@@ -186,7 +188,7 @@ export class Renderer {
   /** Screen (CSS px) → world. */
   toWorld(cam: Camera, sx: number, sy: number) {
     return {
-      x: (sx - this.w / 2) / cam.scale + COLUMN_W / 2,
+      x: (sx - this.w / 2 - (cam.offsetX ?? 0)) / cam.scale + COLUMN_W / 2,
       y: (sy - this.h / 2) / cam.scale + cam.y,
     };
   }
@@ -207,7 +209,8 @@ export class Renderer {
     g.fillRect(0, 0, w, h);
 
     // Faint column backdrop.
-    const colX = w / 2 - (COLUMN_W / 2) * cam.scale;
+    const cx = w / 2 + (cam.offsetX ?? 0);
+    const colX = cx - (COLUMN_W / 2) * cam.scale;
     const colW = COLUMN_W * cam.scale;
     const cg = g.createLinearGradient(colX, 0, colX + colW, 0);
     cg.addColorStop(0, 'hsla(200, 80%, 50%, 0)');
@@ -230,7 +233,7 @@ export class Renderer {
 
     // --- World transform
     const sc = cam.scale * dpr;
-    const tx = (w / 2 - (COLUMN_W / 2) * cam.scale) * dpr;
+    const tx = (cx - (COLUMN_W / 2) * cam.scale) * dpr;
     const ty = (h / 2 - cam.y * cam.scale) * dpr;
     g.setTransform(sc, 0, 0, sc, tx, ty);
 

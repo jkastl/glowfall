@@ -15,6 +15,8 @@ export interface StageProps {
   /** Change `n` to ask the camera to glide to world y. */
   focus?: { y: number; n: number } | null;
   onPick?: (uid: string | null) => void;
+  /** CSS px covered by an overlay on the left; the column centers in the remaining space. */
+  insetLeft?: number;
 }
 
 /** Owns the canvas, the render loop and the camera. The sim is stepped here so it stays frame-synced. */
@@ -140,6 +142,10 @@ export function Stage(props: StageProps) {
         }
       }
       cam.y = clamp(cam.y, sim);
+      const targetScale = renderer.fitScale() * (p.editing ? 0.8 : 1);
+      cam.scale += (targetScale - cam.scale) * (1 - Math.exp(-dt * 3));
+      const targetOff = (p.insetLeft ?? 0) / 2;
+      cam.offsetX = (cam.offsetX ?? targetOff) + (targetOff - (cam.offsetX ?? targetOff)) * (1 - Math.exp(-dt * 5));
 
       finaleRef.current += ((p.finale ? 1 : 0) - finaleRef.current) * (1 - Math.exp(-dt * 1.5));
       renderer.draw(sim, cam, (now - t0) / 1000, {
