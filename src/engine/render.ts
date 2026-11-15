@@ -119,11 +119,11 @@ export function drawFixture(g: CanvasRenderingContext2D, f: Fixture, body: Body,
     g.fillStyle = `hsla(${hue}, 90%, ${style.kind === 'peg' ? 60 : 45}%, ${(style.kind === 'peg' ? 0.35 : 0.1) * base + flash * 0.35})`;
     g.fill();
   }
-  // Halo
+  // Soft inner halo; the screen-space bloom pass does the rest.
   g.lineCap = 'round';
   g.lineJoin = 'round';
-  g.strokeStyle = `hsla(${hue}, 100%, 60%, ${0.07 * base + flash * 0.22})`;
-  g.lineWidth = w * 5 + flash * 0.25;
+  g.strokeStyle = `hsla(${hue}, 100%, 62%, ${0.05 * base + flash * 0.25})`;
+  g.lineWidth = w * 3 + flash * 0.1;
   g.stroke();
   // Core
   g.strokeStyle = `hsla(${hue}, 100%, ${62 + flash * 30}%, ${Math.min(1, 0.85 * base + flash)})`;
@@ -148,6 +148,10 @@ export class Renderer {
   private dpr = 1;
   private motes: Mote[] = [];
   private canvas: HTMLCanvasElement;
+  private bloomA = document.createElement('canvas');
+  private bloomB = document.createElement('canvas');
+  /** Screen-space bloom (cheap downsample blur). */
+  bloom = true;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -171,6 +175,34 @@ export class Renderer {
     this.h = cssH;
     this.canvas.width = Math.round(cssW * this.dpr);
     this.canvas.height = Math.round(cssH * this.dpr);
+    this.bloomA.width = Math.max(1, Math.round(cssW / 4));
+    this.bloomA.height = Math.max(1, Math.round(cssH / 4));
+    this.bloomB.width = Math.max(1, Math.round(cssW / 10));
+    this.bloomB.height = Math.max(1, Math.round(cssH / 10));
+  }
+
+  /** Downsample the frame, square it (crushes the dark background), and add it back: soft light bleed. */
+  private applyBloom() {
+    const g = this.g;
+    const a = this.bloomA.getContext('2d')!;
+    const b = this.bloomB.getContext('2d')!;
+    const A = this.bloomA;
+    const B = this.bloomB;
+    a.globalCompositeOperation = 'copy';
+    a.imageSmoothingQuality = 'medium';
+    a.drawImage(this.canvas, 0, 0, A.width, A.height);
+    a.globalCompositeOperation = 'multiply';
+    a.drawImage(A, 0, 0);
+    b.globalCompositeOperation = 'copy';
+    b.drawImage(A, 0, 0, B.width, B.height);
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalCompositeOperation = 'lighter';
+    g.imageSmoothingEnabled = true;
+    g.globalAlpha = 0.35;
+    g.drawImage(A, 0, 0, this.canvas.width, this.canvas.height);
+    g.globalAlpha = 0.75;
+    g.drawImage(B, 0, 0, this.canvas.width, this.canvas.height);
+    g.globalAlpha = 1;
   }
 
   get width() {
@@ -339,6 +371,7 @@ export class Renderer {
         g.drawImage(glowSprite(c.hue), x - 0.8, y - 0.8, 1.6, 1.6);
       }
     }
+    if (this.bloom) this.applyBloom();
     g.globalCompositeOperation = 'source-over';
   }
 }
