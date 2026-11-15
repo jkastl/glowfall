@@ -1,4 +1,4 @@
-import { Box, Polygon, RevoluteJoint, Vec2 } from 'planck';
+import { Box, Circle, Polygon, RevoluteJoint, Vec2 } from 'planck';
 import type { BuildContext, PartDef } from '../engine/types';
 import type { Pt } from './lib/routing';
 
@@ -11,7 +11,10 @@ function chime(ctx: BuildContext, x: number, y: number, len: number, note: numbe
   const bar = b.createFixture(new Box(0.075, len / 2, Vec2(0, len / 2 + 0.05), 0), { density: 0.9, friction: 0.05, restitution: 0.3 });
   ctx.styleFixture(bar, { kind: 'solid', hue, base: 0.6, note });
   const cap = b.createFixture(new Polygon([Vec2(-0.2, 0.08), Vec2(0, -0.17), Vec2(0.2, 0.08)]), { density: 0.4, friction: 0.05, restitution: 0.2 });
-  ctx.styleFixture(cap, { kind: 'solid', hue, base: 0.45, note });
+  // Physics keeps the peaked cap (nothing can rest on it); visually it's a round pivot jewel.
+  ctx.styleFixture(cap, { kind: 'hidden', note });
+  const jewel = b.createFixture(new Circle(Vec2(0, 0), 0.13), { density: 0.4, filterMaskBits: 0 });
+  ctx.styleFixture(jewel, { kind: 'peg', hue, base: 0.8, note });
   ctx.world.createJoint(
     new RevoluteJoint({ enableLimit: true, lowerAngle: -limit, upperAngle: limit }, ctx.ground, b, ctx.v(x, y)),
   );
