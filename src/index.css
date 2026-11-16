@@ -245,6 +245,19 @@ html, body, #root { margin: 0; height: 100%; background: var(--bg); color: var(-
 .sleep-veil.waking, .sleep-veil.asleep { animation: none; }
 .sleep-veil p {
   position: absolute; left: 0; right: 0; top: 50%; margin: 0; text-align: center; transform: translateY(-50%);
-  font-size: 15px; letter-spacing: 0.14em; color: rgba(170, 225, 255, 0.28); opacity: 0; animation: fadein 4s ease 1s forwards;
+  font-size: 15px; letter-spacing: 0.14em; color: rgba(170, 225, 255, 0.28); opacity: 0; animation: resting 90s ease 1s forwards;
 }
 @keyframes veil-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes resting { 0% { opacity: 0; } 5% { opacity: 0.9; } 60% { opacity: 0.9; } 100% { opacity: 0; } }
+
+/* ---------- burn-in care ---------- */
+/* Run controls fade out while the marbles run untouched (App sets .ui-idle); a tap brings them
+   back. With pointer-events off, that tap lands on the stage instead of a hidden button. */
+.app.ui-idle .hud-top, .app.ui-idle .controls { opacity: 0; pointer-events: none; }
+.app.ui-arming .hud-top, .app.ui-arming .controls { pointer-events: none; }
+/* Everything that can sit still drifts a few pixels on a slow circle (App sets --ox/--oy).
+   `translate` composes with the transforms these already use for centring. */
+.hud-top, .controls, .quote, .finale-msg, .sleep-veil p { translate: var(--ox, 0) var(--oy, 0); }
+.hud-top, .controls { transition: opacity 0.35s ease, translate 50s linear; }
+.app.ui-idle .hud-top, .app.ui-idle .controls { transition: opacity 1.6s ease, translate 50s linear; }
+.quote { transition: opacity 2.4s ease, translate 50s linear; }

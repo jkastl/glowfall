@@ -2,6 +2,14 @@
 
 All notable changes to Glowfall. Versions follow [semver](https://semver.org/); each release is tagged `vX.Y.Z`.
 
+## 1.6.0 (2026-11-16)
+
+- **Burn-in care.**
+  - While marbles run, the buttons and the counter fade out after 4 quiet seconds. A tap anywhere (or moving a mouse) brings them back, and that tap can't press a button that was hidden under your finger.
+  - They stay put while the settings panel is open.
+  - Anything that can sit still — paused and finished controls, the quotes, the finale line — drifts a few pixels around a slow circle, too gently to notice.
+  - The "Resting · tap to wake" line fades away after about a minute.
+
 ## 1.5.0 (2026-11-16)
 
 - **Endless runs rest after 15 minutes untouched.**

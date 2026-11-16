@@ -17,6 +17,10 @@ type SleepState = null | 'fading' | 'asleep' | 'waking';
 /** Endless runs rest after this long without input, fading away over SLEEP_FADE_MS. */
 const SLEEP_AFTER_MS = 15 * 60 * 1000;
 const SLEEP_FADE_MS = 30 * 1000;
+/** Run controls fade out after this long without a touch. */
+const UI_IDLE_MS = 4000;
+/** Radius of the slow drift that keeps static overlays from burning in. */
+const ORBIT_PX = 4;
 
 const STORE_KEY = 'glowfall.track.v1';
 const FEEL_KEY = 'glowfall.feel.v1';
@@ -232,12 +236,35 @@ export function App() {
     setSleep(s);
   };
   const lastInput = useRef(0);
+  // Burn-in: while marbles run, the buttons and counter fade out after a few quiet seconds, and
+  // any touch (or, with a mouse, any movement) brings them back. The track itself never sits still.
+  const [uiIdle, setUiIdleState] = useState(false);
+  const uiIdleRef = useRef(false);
+  // While the controls fade back in they don't take taps yet, so the tap that revealed them can't
+  // also press whichever button was hiding under the finger.
+  const [uiArming, setUiArming] = useState(false);
+  const setUiIdle = (v: boolean) => {
+    uiIdleRef.current = v;
+    setUiIdleState(v);
+  };
+  const lastSeen = useRef(0);
   useEffect(() => {
+    let armTimer: ReturnType<typeof setTimeout> | undefined;
+    const seen = () => {
+      lastSeen.current = performance.now();
+      if (!uiIdleRef.current) return;
+      setUiIdle(false);
+      setUiArming(true);
+      clearTimeout(armTimer);
+      armTimer = setTimeout(() => setUiArming(false), 500);
+    };
     const touch = () => {
       lastInput.current = performance.now();
+      seen();
     };
     const drag = (e: PointerEvent) => {
       if (e.buttons) touch();
+      else if (e.pointerType === 'mouse') seen();
     };
     const opts = { capture: true, passive: true };
     window.addEventListener('pointerdown', touch, opts);
@@ -249,8 +276,35 @@ export function App() {
       window.removeEventListener('pointermove', drag, opts);
       window.removeEventListener('wheel', touch, opts);
       window.removeEventListener('keydown', touch, opts);
+      clearTimeout(armTimer);
     };
   }, []);
+  const hideUi = mode === 'run' && !feelOpen;
+  useEffect(() => {
+    if (!hideUi) {
+      setUiIdle(false);
+      return;
+    }
+    lastSeen.current = performance.now();
+    const id = setInterval(() => {
+      if (!uiIdleRef.current && performance.now() - lastSeen.current > UI_IDLE_MS) setUiIdle(true);
+    }, 400);
+    return () => clearInterval(id);
+  }, [hideUi]);
+
+  // Burn-in: whatever stays on screen (paused, finished, quotes) drifts a few pixels around a
+  // slow circle, one step a minute, gliding between steps so it never visibly moves.
+  const [orbit, setOrbit] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setOrbit((o) => o + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  const orbitAngle = (orbit * Math.PI * 2) / 7;
+  const orbitStyle = {
+    '--ox': `${(Math.cos(orbitAngle) * ORBIT_PX).toFixed(1)}px`,
+    '--oy': `${(Math.sin(orbitAngle) * ORBIT_PX).toFixed(1)}px`,
+  } as React.CSSProperties;
+
   const endlessRun = mode === 'run' && !!runSim?.loop;
   useEffect(() => {
     if (!endlessRun) return;
@@ -308,7 +362,7 @@ export function App() {
   const building = mode === 'build';
 
   return (
-    <div className={`app mode-${mode}`}>
+    <div className={`app mode-${mode}${uiIdle ? ' ui-idle' : ''}${uiArming ? ' ui-arming' : ''}`} style={orbitStyle}>
       <Panel track={track} selected={selected} onChange={setTrack} onSelect={select} onAdd={add} onPreset={preset} loop={feel.loop} />
       <main className="stage-wrap">
         <Stage
