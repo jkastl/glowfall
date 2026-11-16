@@ -2,6 +2,11 @@
 
 All notable changes to Glowfall. Versions follow [semver](https://semver.org/); each release is tagged `vX.Y.Z`.
 
+## 1.4.0 (2026-11-16)
+
+- **The Starter tracks menu shows which one you're on.** After you pick one, its name stays in the menu, through reloads too, until you add, remove or reorder a part (then it's your own track and the menu goes back to "Starter tracks") or pick another.
+- The closed menu shows just the track's name; the list still has the descriptions.
+
 ## 1.3.3 (2026-11-16)
 
 - **Fixed: the camera didn't follow the marbles after loading a starter track.** Loading one asked the camera to glide to a spot above where it's allowed to go. The glide never finished, and an unfinished glide switched off following until you scrolled by hand (then it jumped). Glides now aim within the camera's limits, and a new run always starts following.

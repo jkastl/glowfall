@@ -45,18 +45,21 @@ html, body, #root { margin: 0; height: 100%; background: var(--bg); color: var(-
 .dim { color: var(--ink-dim); font-weight: 400; text-transform: none; letter-spacing: 0; }
 
 .presets {
-  appearance: none; -webkit-appearance: none; max-width: 172px; cursor: pointer;
-  color: #dff8ff; font: inherit; font-size: 13px; font-weight: 500; letter-spacing: 0.02em;
+  position: relative; display: block; max-width: 172px; min-width: 0; cursor: pointer;
+  color: #dff8ff; font-size: 13px; font-weight: 500; letter-spacing: 0.02em;
   padding: 8px 32px 8px 14px; border-radius: 999px;
   border: 1px solid rgba(140, 235, 255, 0.32);
   background:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5' fill='none' stroke='%239ff0ff' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center / 12px 12px,
     linear-gradient(135deg, rgba(110, 220, 255, 0.16), rgba(170, 140, 255, 0.14));
   box-shadow: 0 0 14px rgba(100, 220, 255, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
-.presets:hover, .presets:focus-visible { border-color: rgba(160, 240, 255, 0.6); box-shadow: 0 0 18px rgba(100, 220, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08); outline: none; }
+.presets-label { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.presets.is-set .presets-label { color: #f2fbff; text-shadow: 0 0 10px rgba(140, 235, 255, 0.45); }
+/* The real select sits invisibly on top, so a tap opens the native list. */
+.presets select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; appearance: none; -webkit-appearance: none; border: 0; }
+.presets:hover, .presets:focus-within { border-color: rgba(160, 240, 255, 0.6); box-shadow: 0 0 18px rgba(100, 220, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08); }
 .presets option { color: #0b1626; background: #e9f7ff; }
 
 /* ---------- track list ---------- */

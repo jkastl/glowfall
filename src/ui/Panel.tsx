@@ -84,28 +84,36 @@ export function Panel({ track, selected, onChange, onSelect, onAdd, onPreset, lo
     onSelect(String(active.id));
   };
 
+  // The starter track this is, as long as its parts are untouched. Any add, remove or reorder
+  // makes it your own track and the menu goes back to its prompt.
+  const ids = track.map((t) => t.partId).join(',');
+  const current = PRESETS.find((p) => p.parts.join(',') === ids);
+
   return (
     <aside className="panel">
       <header className="panel-head">
         <h1>
           Glowfall <span className="version">{VERSION_LABEL}</span>
         </h1>
-        <select
-          className="presets"
-          value=""
-          onChange={(e) => {
-            if (e.target.value) onPreset(e.target.value);
-          }}
-          aria-label="Load a starter track"
-        >
-          <option value="" disabled hidden>Starter tracks</option>
-          {PRESETS.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}: {p.blurb}
-            </option>
-          ))}
-          <option value="__clear">Clear track</option>
-        </select>
+        <label className={`presets${current ? ' is-set' : ''}`}>
+          {/* The closed menu shows just the name; the native list underneath keeps the blurbs. */}
+          <span className="presets-label">{current ? current.name : 'Starter tracks'}</span>
+          <select
+            value={current?.id ?? ''}
+            onChange={(e) => {
+              if (e.target.value) onPreset(e.target.value);
+            }}
+            aria-label="Load a starter track"
+          >
+            <option value="" disabled hidden>Starter tracks</option>
+            {PRESETS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}: {p.blurb}
+              </option>
+            ))}
+            <option value="__clear">Clear track</option>
+          </select>
+        </label>
       </header>
 
       <section className="track-sec">
