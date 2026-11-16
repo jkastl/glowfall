@@ -2,6 +2,10 @@
 
 All notable changes to Glowfall. Versions follow [semver](https://semver.org/); each release is tagged `vX.Y.Z`.
 
+## 1.3.1 (2026-11-16)
+
+- The Starter tracks menu now looks like a menu: a glowing pill with a chevron, instead of something that reads as a text field.
+
 ## 1.3.0 (2026-11-16)
 
 - **Starter tracks come with their own feel.** Choosing one sets speed, gravity, bounce and Endless loop along with the parts, and a note says what changed. The Background volume is left as you set it.

@@ -98,7 +98,7 @@ export function Panel({ track, selected, onChange, onSelect, onAdd, onPreset, lo
           }}
           aria-label="Load a starter track"
         >
-          <option value="">Starter tracks…</option>
+          <option value="" disabled hidden>Starter tracks</option>
           {PRESETS.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}: {p.blurb}
