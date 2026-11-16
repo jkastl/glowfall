@@ -43,12 +43,14 @@ const CHORD_RELEASE_TC = 3.4;
 const CHORD_TAIL = 17; // oscillators stop this long after the release begins
 
 // ── Levels (tuned with tools/audio-check) ────────────────────────────────────────────────────
-const PAD_NOTE_GAIN = 0.023;
-const PAD_BASS_GAIN = 0.05;
-const OCEAN_GAIN = 0.016;
-const HIT_GAIN = 0.2;
-const TICK_GAIN = 0.05;
-const CLICK_GAIN = 0.022;
+// The marbles and the track are the music; the pad and ocean are a bed underneath, ~10 dB below
+// a typical bell (v1.1.0: the pad used to sit level with the hits and drown them on small speakers).
+const PAD_NOTE_GAIN = 0.0075;
+const PAD_BASS_GAIN = 0.016;
+const OCEAN_GAIN = 0.005;
+const HIT_GAIN = 0.24;
+const TICK_GAIN = 0.07;
+const CLICK_GAIN = 0.04;
 const FINALE_GAIN = 0.15;
 
 // ── Polyphony / rate limits ──────────────────────────────────────────────────────────────────

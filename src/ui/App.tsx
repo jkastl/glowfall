@@ -48,7 +48,7 @@ function loadFeel(): Feel {
     if (raw) {
       const f = JSON.parse(raw) as Partial<Feel>;
       const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
-      return { speed: num(f.speed, 1), gravity: num(f.gravity, 1), bounce: num(f.bounce, 1), loop: f.loop === true };
+      return { speed: num(f.speed, 1), gravity: num(f.gravity, 1), bounce: num(f.bounce, 1), background: num(f.background, 1), loop: f.loop === true };
     }
   } catch {
     /* storage unavailable */
@@ -102,6 +102,7 @@ export function App() {
   useEffect(() => {
     runSim?.setGravity(feel.gravity);
     runSim?.setBounce(feel.bounce);
+    audio.current.setBackground(feel.background);
     try {
       localStorage.setItem(FEEL_KEY, JSON.stringify(feel));
     } catch {

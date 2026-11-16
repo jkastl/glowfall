@@ -12,6 +12,7 @@ import { GlowEngine, type EngineStats } from './engine';
  *  - hit(e): a marble struck something. Called often (dozens/sec) — rate-limited & voice-stolen internally.
  *  - finale(): all marbles have come to rest. Plays a gentle resolving arpeggio.
  *  - setMuted(m): mute toggle.
+ *  - setBackground(level): pad/ocean level (0 = off, 1 = default bed, 2.5 ≈ as loud as the bells).
  *
  * Safe to import and construct without a DOM: nothing touches window/AudioContext until start().
  */
@@ -26,6 +27,8 @@ type Ctor = typeof AudioContext;
 
 export class AmbientAudio {
   muted = false;
+  /** Pad/ocean level multiplier, from the Background slider. */
+  background = 1;
 
   private ctx: AudioContext | null = null;
   private engine: GlowEngine | null = null;
@@ -47,7 +50,7 @@ export class AmbientAudio {
 
     const e = this.engine;
     const t = ctx.currentTime;
-    ramp(e.padBus.gain, 1, t, 0.3);
+    ramp(e.padBus.gain, this.background, t, 0.3);
     ramp(e.hitBus.gain, 1, t, 0.05);
     ramp(e.mute.gain, this.muted ? 0 : 1, t, 0.05);
     ramp(e.out.gain, 1, t, FADE_IN / 3);
@@ -60,7 +63,7 @@ export class AmbientAudio {
     const e = this.engine;
     if (!e || !this.active) return;
     const t = e.ctx.currentTime;
-    ramp(e.padBus.gain, PAD_DUCK, t, 0.35);
+    ramp(e.padBus.gain, PAD_DUCK * this.background, t, 0.35);
     ramp(e.hitBus.gain, 0, t, 0.09);
   }
 
@@ -70,7 +73,7 @@ export class AmbientAudio {
     if (!e || !this.active) return;
     this.wake();
     const t = e.ctx.currentTime;
-    ramp(e.padBus.gain, 1, t, 0.45);
+    ramp(e.padBus.gain, this.background, t, 0.45);
     ramp(e.hitBus.gain, 1, t, 0.06);
   }
 
@@ -109,6 +112,13 @@ export class AmbientAudio {
     const e = this.engine;
     if (!e) return;
     ramp(e.mute.gain, m ? 0 : 1, e.ctx.currentTime, m ? 0.06 : 0.12);
+  }
+
+  setBackground(level: number) {
+    this.background = level;
+    const e = this.engine;
+    if (!e || !this.active) return;
+    ramp(e.padBus.gain, (this.paused ? PAD_DUCK : 1) * level, e.ctx.currentTime, 0.25);
   }
 
   /** Dev/diagnostics only. */
