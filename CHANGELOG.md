@@ -2,6 +2,10 @@
 
 All notable changes to Glowfall. Versions follow [semver](https://semver.org/); each release is tagged `vX.Y.Z`.
 
+## 1.3.3 (2026-11-16)
+
+- **Fixed: the camera didn't follow the marbles after loading a starter track.** Loading one asked the camera to glide to a spot above where it's allowed to go. The glide never finished, and an unfinished glide switched off following until you scrolled by hand (then it jumped). Glides now aim within the camera's limits, and a new run always starts following.
+
 ## 1.3.2 (2026-11-16)
 
 - **The panel header no longer sits in the status bar's blur.** As an installed app on iPad, "Glowfall" and the Starter tracks menu were smeared by the soft band iPadOS draws under the clock. The header and the top-right buttons now start below it. Browser tabs and desktop are unchanged.

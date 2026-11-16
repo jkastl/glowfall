@@ -38,7 +38,8 @@ export function Stage(props: StageProps) {
   useEffect(() => {
     const canvas = canvasRef.current!;
     const renderer = new Renderer(canvas);
-    (window as unknown as { __glow?: Renderer }).__glow = renderer;
+    (window as unknown as { __glow?: Renderer; __glowCam?: Camera }).__glow = renderer;
+    (window as unknown as { __glowCam?: Camera }).__glowCam = camRef.current;
     const cam = camRef.current;
     let raf = 0;
     let last = performance.now();
@@ -147,7 +148,12 @@ export function Stage(props: StageProps) {
       const H = period(sim);
 
       if (simRef.current !== sim) {
-        if (!simRef.current || p.editing === false) cam.y = prevY = H ? -3 + halfView() : clamp(-100, sim);
+        if (!simRef.current || p.editing === false) {
+          cam.y = prevY = H ? -3 + halfView() : clamp(-100, sim);
+          // A run starts on a fresh sim: a builder glide left over from before must not hold the
+          // camera, or it never starts following the marbles.
+          if (simRef.current) glideRef.current = null;
+        }
         simRef.current = sim;
         finaleRef.current = 0;
       }
@@ -162,7 +168,9 @@ export function Stage(props: StageProps) {
         }
         if (glideRef.current != null) {
           // Looping: glide to the nearest copy, which may be across the seam.
-          const goal = H ? nearest(glideRef.current, cam.y, H) : glideRef.current;
+          // Otherwise aim inside the camera's limits: a goal past them (y = 0 when a starter track
+          // loads) can never be reached, and an unfinished glide blocks following.
+          const goal = H ? nearest(glideRef.current, cam.y, H) : clamp(glideRef.current, sim);
           cam.y += (goal - cam.y) * (1 - Math.exp(-dt * 4));
           if (Math.abs(goal - cam.y) < 0.02) glideRef.current = null;
         } else if (!p.editing && sim.started && now > manualUntil) {
