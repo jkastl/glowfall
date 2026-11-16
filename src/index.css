@@ -13,6 +13,10 @@ html, body, #root { margin: 0; height: 100%; background: var(--bg); color: var(-
 
 /* ---------- layout ---------- */
 .stage-wrap { position: absolute; inset: 0; }
+/* The stage starts below the status bar. iOS darkens the strip behind the clock and battery in
+   an installed web app; over the plain background that's invisible, over the track it read as a
+   fade across the top. The HUD inside is positioned from here, so no safe-area offset there. */
+.stage-wrap { top: env(safe-area-inset-top, 0px); }
 .stage-wrap .stage { position: absolute; inset: 0; }
 
 .panel {
@@ -106,7 +110,7 @@ html, body, #root { margin: 0; height: 100%; background: var(--bg); color: var(-
 .icon-btn:active { background: rgba(120, 220, 255, 0.2); }
 
 .hud-top {
-  position: absolute; z-index: 6; top: max(18px, env(safe-area-inset-top)); right: max(20px, env(safe-area-inset-right));
+  position: absolute; z-index: 6; top: 14px; right: max(20px, env(safe-area-inset-right));
   display: flex; gap: 12px; align-items: center;
 }
 .counter {
@@ -127,7 +131,7 @@ html, body, #root { margin: 0; height: 100%; background: var(--bg); color: var(-
 /* ---------- feel (gravity / bounce) ---------- */
 .icon-btn.on { background: rgba(120, 220, 255, 0.18); border-color: rgba(140, 235, 255, 0.5); }
 .feel {
-  position: absolute; z-index: 7; top: calc(max(18px, env(safe-area-inset-top)) + 60px); right: max(20px, env(safe-area-inset-right));
+  position: absolute; z-index: 7; top: 74px; right: max(20px, env(safe-area-inset-right));
   width: 280px; padding: 14px 16px 10px; border-radius: 18px; display: flex; flex-direction: column; gap: 14px;
   background: linear-gradient(180deg, rgba(10, 20, 44, 0.82), rgba(6, 10, 28, 0.9));
   backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2);

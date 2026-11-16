@@ -2,6 +2,10 @@
 
 All notable changes to Glowfall. Versions follow [semver](https://semver.org/); each release is tagged `vX.Y.Z`.
 
+## 1.2.1 (2026-11-16)
+
+- No more fade across the top on the iPad. In the installed app, iOS darkens the strip behind the status bar (clock, battery) and the track was drawn underneath it. The stage now starts just below the status bar, so that strip sits over the plain background.
+
 ## 1.2.0 (2026-11-16)
 
 - **Connectors between parts**: a small funnel and slot now sits between every two parts, like the standard ports between Great Ball Contraption modules.
