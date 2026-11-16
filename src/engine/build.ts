@@ -7,6 +7,8 @@ export interface FixtureData {
   sensor?: { onEnter: (m: Marble) => void; onExit?: (m: Marble) => void };
   marble?: Marble;
   partIndex?: number;
+  /** Material.calm: contacts take the lower restitution (see Simulation's contact listener). */
+  calm?: boolean;
 }
 
 export function fixtureData(f: Fixture): FixtureData | null {
@@ -64,11 +66,15 @@ export function buildPart(
     ...style,
   });
 
-  const mat = (m?: Material) => ({ ...WALL_FIXTURE, ...m });
+  const mat = (m?: Material) => {
+    const { calm: _calm, ...rest } = m ?? {};
+    return { ...WALL_FIXTURE, ...rest };
+  };
   const pts = (p: [number, number][]) => p.map(([x, y]) => Vec2(x, y));
 
-  const attach = (f: Fixture, style?: Partial<FixtureStyle>) => {
+  const attach = (f: Fixture, style?: Partial<FixtureStyle>, m?: Material) => {
     const data: FixtureData = { style: mkStyle(style), partIndex };
+    if (m?.calm) data.calm = true;
     f.setUserData(data);
     return f;
   };
@@ -85,16 +91,16 @@ export function buildPart(
 
     wall(points, style, m) {
       if (points.length < 2) throw new Error(`${def.id}: wall needs ≥2 points`);
-      return attach(ground.createFixture(new Chain(pts(points), false), mat(m)), style);
+      return attach(ground.createFixture(new Chain(pts(points), false), mat(m)), style, m);
     },
     loop(points, style, m) {
-      return attach(ground.createFixture(new Chain(pts(points), true), mat(m)), { kind: 'solid', ...style });
+      return attach(ground.createFixture(new Chain(pts(points), true), mat(m)), { kind: 'solid', ...style }, m);
     },
     circle(x, y, r, style, m) {
-      return attach(ground.createFixture(new Circle(Vec2(x, y), r), mat(m)), { kind: 'peg', ...style });
+      return attach(ground.createFixture(new Circle(Vec2(x, y), r), mat(m)), { kind: 'peg', ...style }, m);
     },
     polygon(points, style, m) {
-      return attach(ground.createFixture(new Polygon(pts(points)), mat(m)), { kind: 'solid', ...style });
+      return attach(ground.createFixture(new Polygon(pts(points)), mat(m)), { kind: 'solid', ...style }, m);
     },
     sensor(a: Aabb, onEnter, onExit) {
       const hw = (a.x1 - a.x0) / 2;

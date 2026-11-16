@@ -2,6 +2,15 @@
 
 All notable changes to Glowfall. Versions follow [semver](https://semver.org/); each release is tagged `vX.Y.Z`.
 
+## 1.2.0 (2026-11-16)
+
+- **Connectors between parts**: a small funnel and slot now sits between every two parts, like the standard ports between Great Ball Contraption modules.
+  - Most parts hand marbles over fast and sideways (5–7 units/s), and marbles were flying straight past the next part's mechanism, as with Plinko and the Color Sorter.
+  - The connector's calm, low-bounce glass gathers each marble into a short vertical slot, so the next part receives it gently (median sideways speed now about 0.2 units/s).
+  - New `tests/handoff.test.ts` checks this after every part.
+- **Calm surfaces** (engine): a material can now ask for the *lower* restitution in a contact. Box2D normally takes the higher, so the marble's own bounciness overrode any soft wall.
+- Colour sorting improved from about 65% to about 75% correct. It is still not perfect when marbles of different colours arrive close together; see the backlog.
+
 ## 1.1.0 (2026-11-16)
 
 - **Quieter background**: the pad and ocean now sit about 10 dB under a typical marble note, so the marbles and the track make the music. Bells, ticks and marble-on-marble clicks are a touch louder. A new **Background** slider in the run settings goes from off to as full as before.

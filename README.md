@@ -25,7 +25,7 @@ Dev preview of a single part: `/?solo=<partId>&marbles=20&t=8` (where `t` fast-f
 
 ## Adding a part
 
-Drop a file in `src/parts/` that default-exports a `PartDef` (see `src/engine/types.ts`, and use `src/parts/switchback.ts` as the reference). Marbles enter through the top port (x 3.9–6.1) and must leave through the bottom port. `npm test` checks that.
+Drop a file in `src/parts/` that default-exports a `PartDef` (see `src/engine/types.ts`, and use `src/parts/switchback.ts` as the reference). Marbles enter through the top port (x 3.9–6.1) and must leave through the bottom port. `npm test` checks that. In a track, the engine puts a small connector between every two parts (`port` in `src/engine/fixtures.ts`), so a part can count on a calm, near-vertical arrival close to the middle of the port, whatever sits above it.
 
 ## Versioning
 

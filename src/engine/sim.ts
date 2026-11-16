@@ -9,7 +9,7 @@ import {
   PORT_CENTER,
   STEP_DT,
 } from './constants';
-import { collector, hopper } from './fixtures';
+import { collector, hopper, port } from './fixtures';
 import type { BuiltPart, Marble, PartDef, TrackItem } from './types';
 
 export interface HitEvent {
@@ -114,13 +114,20 @@ export class Simulation {
 
     const seq: { uid: string; def: PartDef }[] = [];
     if (!opts.bare) seq.push({ uid: '__hopper', def: hopper });
-    for (const t of track) seq.push({ uid: t.item.uid, def: t.def });
+    for (const t of track) {
+      // A standard connector between consecutive parts calms each hand-over (see fixtures.ts).
+      if (!opts.bare && seq.length > 0) seq.push({ uid: `__port${seq.length}`, def: port });
+      seq.push({ uid: t.item.uid, def: t.def });
+    }
     // Looping: no pool. The source doubles as the funnel at the seam.
     if (!opts.bare && !this.loop) seq.push({ uid: '__collector', def: collector });
 
     let y = 0;
+    let hueIndex = -1;
     seq.forEach((s, i) => {
-      const built = buildPart(this.world, s.def, s.uid, y, partHue(i), i);
+      // Connectors take the colour of the part above and don't advance the hue band.
+      if (s.def !== port) hueIndex++;
+      const built = buildPart(this.world, s.def, s.uid, y, partHue(Math.max(0, hueIndex)), i);
       this.parts.push(built);
       y += s.def.height;
     });
@@ -137,6 +144,10 @@ export class Simulation {
     // Registered after the parts, so part listeners (e.g. turnstile's calm contacts) run first and
     // the bounce multiplier scales whatever they decided.
     this.world.on('begin-contact', (c) => {
+      // Calm surfaces win the restitution mix (Box2D's default is max(a, b)).
+      if (fixtureData(c.getFixtureA())?.calm || fixtureData(c.getFixtureB())?.calm) {
+        c.setRestitution(Math.min(c.getFixtureA().getRestitution(), c.getFixtureB().getRestitution()));
+      }
       if (this.bounce !== 1) c.setRestitution(Math.min(MAX_RESTITUTION, c.getRestitution() * this.bounce));
       this.onContact(c, true);
     });

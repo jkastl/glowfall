@@ -21,6 +21,7 @@ v1 is deliberately simple: build a column of parts, release 30 marbles, watch th
 - **Haptics** on supported devices for big impacts.
 
 ## Building
+- **Color Sorter escapement**: it sorts about 75% correctly. When two marbles of different colours arrive close together, the gate can only lean one way, and the second rolls off on the wrong side. Hold marbles on a little latch and release one at a time once the gate has set.
 - **Part parameters**: mirror (left/right), width/height variants, peg density, number of buckets, wheel speed, sorter rule (warm/cool, by color, alternate).
 - **Branching / two columns**: true GBC layouts with parallel lanes that merge, or a 2-wide grid.
 - **Drag from palette** directly into a position in the stack (currently tap-to-insert), and drag parts on the canvas itself.
@@ -53,7 +54,7 @@ v1 is deliberately simple: build a column of parts, release 30 marbles, watch th
 
 ## Engine asks from the part builders
 Several part agents independently asked for these. All of them worked around the gaps:
-- **Calm surfaces**: Box2D mixes restitution with `max`, so the marble's 0.35 overrides any "soft" wall. Add an opt-in per-fixture rule (e.g. `min` for marble↔wall) instead of parts installing their own contact listeners (turnstile and vortex do this today).
+- ~~**Calm surfaces**~~: done in v1.2.0 (`Material.calm`), used by the connectors between parts. Turnstile and vortex still have their own contact listeners and could switch over.
 - **`ctx.chime(note, x, y)`**: let a mechanism play a tuned note on an event (a bucket tipping, a pocket emptying), not just on impacts.
 - **`ctx.marblesIn(aabb)`**: a list of marbles in a region, instead of tracking them by sensors or by circle radius.
 - **Curved `funnelToOutlet`**: bell-shaped walls that arrive vertical at the port (several parts hand-roll this).

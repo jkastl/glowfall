@@ -96,6 +96,11 @@ export interface Material {
   friction?: number;
   restitution?: number;
   density?: number;
+  /**
+   * Calm surface: contacts with it use the *lower* of the two restitutions. Box2D normally takes
+   * the higher, so the marble's own bounciness (0.35) overrides any soft wall.
+   */
+  calm?: boolean;
 }
 
 export interface PartDef {

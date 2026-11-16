@@ -53,3 +53,38 @@ export const collector: PartDef = {
     });
   },
 };
+
+export const PORT_HEIGHT = 1.8;
+const PORT_MOUTH_HALF = 1.9; // wider than the port window, so fast arrivals near its edge are caught
+const PORT_SLOT_HALF = 0.4; // marble radius 0.25
+const PORT_SLOT_Y = 1.25;
+
+/**
+ * The standard connector between two parts, like the ports between Great Ball Contraption
+ * modules. Parts hand marbles over at very different speeds; many send them out fast and sideways
+ * (5–7 u/s), and the next part's design can't count on catching that. The connector gathers each
+ * marble into a short vertical slot of calm, low-bounce glass, so every part receives a gentle,
+ * near-vertical arrival whatever sits above it.
+ */
+export const port: PartDef = {
+  id: '__port',
+  name: 'Port',
+  blurb: 'Where one part hands over to the next.',
+  height: PORT_HEIGHT,
+  hidden: true,
+  build(ctx) {
+    const side = (dir: -1 | 1): [number, number][] => {
+      const pts: [number, number][] = [];
+      for (let i = 0; i <= 14; i++) {
+        const u = i / 14;
+        const e = u * u * (3 - 2 * u);
+        pts.push([PORT_CENTER + dir * (PORT_MOUTH_HALF + (PORT_SLOT_HALF - PORT_MOUTH_HALF) * e), u * PORT_SLOT_Y]);
+      }
+      pts.push([PORT_CENTER + dir * PORT_SLOT_HALF, ctx.H]);
+      return pts;
+    };
+    const glass = { restitution: 0.04, friction: 0.06, calm: true };
+    ctx.wall(side(-1), { base: 0.32, width: 0.06, note: 4 }, glass);
+    ctx.wall(side(1), { base: 0.32, width: 0.06, note: 7 }, glass);
+  },
+};
