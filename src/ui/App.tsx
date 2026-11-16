@@ -13,6 +13,10 @@ import { justUpdatedFrom, registerServiceWorker } from '../pwa';
 import { VERSION } from '../version';
 
 type Mode = 'build' | 'run' | 'paused' | 'done';
+type SleepState = null | 'fading' | 'asleep' | 'waking';
+/** Endless runs rest after this long without input, fading away over SLEEP_FADE_MS. */
+const SLEEP_AFTER_MS = 15 * 60 * 1000;
+const SLEEP_FADE_MS = 30 * 1000;
 
 const STORE_KEY = 'glowfall.track.v1';
 const FEEL_KEY = 'glowfall.feel.v1';
@@ -217,6 +221,75 @@ export function App() {
     };
   }, [mode]);
 
+  // Sleep timer, endless runs only (a normal run ends by itself, and then the iPad's own Auto-Lock
+  // takes over). After SLEEP_AFTER_MS with no input, sound and picture fade away over
+  // SLEEP_FADE_MS; then the run pauses, which also drops the wake lock, so Auto-Lock can lock the
+  // iPad. Any input during the fade cancels it; a tap once asleep wakes the run where it was.
+  const [sleep, setSleep] = useState<SleepState>(null);
+  const sleepRef = useRef<SleepState>(null);
+  const goSleep = (s: SleepState) => {
+    sleepRef.current = s;
+    setSleep(s);
+  };
+  const lastInput = useRef(0);
+  useEffect(() => {
+    const touch = () => {
+      lastInput.current = performance.now();
+    };
+    const drag = (e: PointerEvent) => {
+      if (e.buttons) touch();
+    };
+    const opts = { capture: true, passive: true };
+    window.addEventListener('pointerdown', touch, opts);
+    window.addEventListener('pointermove', drag, opts);
+    window.addEventListener('wheel', touch, opts);
+    window.addEventListener('keydown', touch, opts);
+    return () => {
+      window.removeEventListener('pointerdown', touch, opts);
+      window.removeEventListener('pointermove', drag, opts);
+      window.removeEventListener('wheel', touch, opts);
+      window.removeEventListener('keydown', touch, opts);
+    };
+  }, []);
+  const endlessRun = mode === 'run' && !!runSim?.loop;
+  useEffect(() => {
+    if (!endlessRun) return;
+    lastInput.current = performance.now();
+    const id = setInterval(() => {
+      const idle = performance.now() - lastInput.current;
+      if (sleepRef.current === 'fading' && idle < SLEEP_AFTER_MS) {
+        goSleep(null); // someone touched it mid-fade
+        audio.current.restoreLevel();
+      } else if (sleepRef.current === null && idle >= SLEEP_AFTER_MS) {
+        goSleep('fading');
+        audio.current.fadeAway(SLEEP_FADE_MS / 1000);
+      } else if (sleepRef.current === 'fading' && idle >= SLEEP_AFTER_MS + SLEEP_FADE_MS) {
+        goSleep('asleep');
+        setMode('paused');
+        audio.current.sleep();
+      }
+    }, 1000);
+    return () => {
+      clearInterval(id);
+      // Left the run mid-fade some other way (app sent to the background): undo the fade.
+      if (sleepRef.current === 'fading') {
+        goSleep(null);
+        audio.current.restoreLevel();
+      }
+    };
+  }, [endlessRun]);
+  const wake = () => {
+    if (sleepRef.current !== 'fading' && sleepRef.current !== 'asleep') return;
+    lastInput.current = performance.now();
+    if (sleepRef.current === 'asleep') setMode('run');
+    audio.current.wakeUp();
+    // The veil fades back out and swallows the rest of the waking tap, so it can't land on a button.
+    goSleep('waking');
+    setTimeout(() => {
+      if (sleepRef.current === 'waking') goSleep(null);
+    }, 1200);
+  };
+
   // Pause when the tab/app goes to the background.
   useEffect(() => {
     const onVis = () => {
@@ -309,6 +382,11 @@ export function App() {
           )}
         </div>
 
+        {sleep && (
+          <div className={`sleep-veil ${sleep}`} onPointerDown={wake} aria-hidden={sleep === 'waking'}>
+            {sleep === 'asleep' && <p>Resting · tap to wake</p>}
+          </div>
+        )}
         {toast && <div className="toast">{toast}</div>}
         <Quotes mode={mode} />
         {mode === 'done' && <div className="finale-msg">All the light has settled.</div>}

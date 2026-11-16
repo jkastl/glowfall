@@ -2,6 +2,14 @@
 
 All notable changes to Glowfall. Versions follow [semver](https://semver.org/); each release is tagged `vX.Y.Z`.
 
+## 1.5.0 (2026-11-16)
+
+- **Endless runs rest after 15 minutes untouched.**
+  - Over 30 seconds the sound and picture fade to black; then the run pauses and stops keeping the screen awake, so the iPad's own Auto-Lock can lock it.
+  - Any touch, drag, scroll or key press resets the 15 minutes, including during the fade.
+  - Once resting, tap to wake and the run carries on where it was.
+- Normal runs are unchanged: they keep the screen awake until the marbles settle, then Auto-Lock takes over.
+
 ## 1.4.0 (2026-11-16)
 
 - **The Starter tracks menu shows which one you're on.** After you pick one, its name stays in the menu, through reloads too, until you add, remove or reorder a part (then it's your own track and the menu goes back to "Starter tracks") or pick another.

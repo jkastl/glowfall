@@ -77,6 +77,47 @@ export class AmbientAudio {
     ramp(e.hitBus.gain, 1, t, 0.06);
   }
 
+  /** Sleep timer: let everything fade away over about `seconds`, while the run goes on underneath. */
+  fadeAway(seconds: number) {
+    const e = this.engine;
+    if (!e || !this.active) return;
+    // setTargetAtTime reaches ~1% after 4.6 time constants.
+    ramp(e.out.gain, 0, e.ctx.currentTime, seconds / 4.6);
+  }
+
+  /** Sleep timer finished: hold silent and park the context so nothing runs while the iPad dozes. */
+  sleep() {
+    this.pause();
+    const e = this.engine;
+    const ctx = this.ctx;
+    if (!e || !ctx || !this.active) return;
+    ramp(e.out.gain, 0, ctx.currentTime, 0.1);
+    if (this.suspendTimer) clearTimeout(this.suspendTimer);
+    this.suspendTimer = setTimeout(() => {
+      this.suspendTimer = null;
+      if (this.paused && ctx.state === 'running') void ctx.suspend().catch(noop);
+    }, 1500);
+  }
+
+  /** Undo fadeAway()/sleep(). Called from the waking tap, which also lets iOS restart the audio. */
+  wakeUp() {
+    const e = this.engine;
+    const ctx = this.ctx;
+    if (!e || !ctx || !this.active) return;
+    if (this.suspendTimer) clearTimeout(this.suspendTimer);
+    this.suspendTimer = null;
+    this.unlock(ctx);
+    if (this.paused) this.resume();
+    this.restoreLevel();
+  }
+
+  /** Bring the output back up after fadeAway() without resuming a paused run. */
+  restoreLevel() {
+    const e = this.engine;
+    if (!e || !this.active) return;
+    ramp(e.out.gain, 1, e.ctx.currentTime, FADE_IN / 3);
+  }
+
   stop() {
     const e = this.engine;
     const ctx = this.ctx;
