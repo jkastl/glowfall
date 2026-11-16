@@ -1,7 +1,7 @@
 /* Glowfall service worker. Built into docs/sw.js by the `glowfall-sw` plugin in vite.config.ts,
  * which fills in the version and the precache list. Each release gets its own cache. */
-const VERSION = "1.4.0-eaffd11";
-const FILES = ["apple-touch-icon.png","assets/app-BTqqIY9r.css","assets/app-CCFSQR1P.js","assets/apple-touch-icon-Cjgun8O3.png","assets/icon-CoLxm2Mw.svg","assets/manifest-CZ2uhA_x.webmanifest","icon-192.png","icon-512.png","icon.svg","index.html","manifest.webmanifest"];
+const VERSION = "1.5.0-c4044da";
+const FILES = ["apple-touch-icon.png","assets/app-BcKgxVu_.css","assets/app-mSy05BPY.js","assets/apple-touch-icon-Cjgun8O3.png","assets/icon-CoLxm2Mw.svg","assets/manifest-CZ2uhA_x.webmanifest","icon-192.png","icon-512.png","icon.svg","index.html","manifest.webmanifest"];
 const CACHE = 'glowfall-' + VERSION;
 const scoped = (f) => new URL(f, self.registration.scope).href;
 
