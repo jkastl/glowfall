@@ -2,7 +2,17 @@
 
 All notable changes to Glowfall. Versions follow [semver](https://semver.org/); each release is tagged `vX.Y.Z`.
 
-## 1.2.0 (2026-11-16)
+## 1.1.0 (2026-11-16)
+
+- **Quieter background**: the pad and ocean now sit about 10 dB under a typical marble note, so the marbles and the track make the music. Bells, ticks and marble-on-marble clicks are a touch louder. A new **Background** slider in the run settings goes from off to as full as before.
+- **Plinko actually plinks**:
+  - An inlet funnel drops every marble from a slot onto a lone top peg. The Switchback hands marbles over fast and sideways, along the peg grid's diagonal, so on First Light every one used to thread the whole field without touching a peg.
+  - Slanted nibs on the walls flick marbles that slide down the sides back into the pegs.
+  - Marbles now hit about 7–8 pegs each, up from 0 on First Light. `tests/plinko.test.ts` keeps it that way.
+- **Scenery**:
+  - Behind the track, faint kelp sways in the far distance, while jellyfish and a small fish shoal drift nearer. Each depth scrolls at its own pace (parallax).
+  - On the outside of the column walls grow sparse plants: kelp, sea fans, flowers and glowing bracket fungi. A few animals live there too: a snail inching along, a patrolling fish, a little jellyfish. Each track grows its own garden.
+- **Quotes**: during a run, a quiet line fades in at the bottom of the screen now and then ("The marble does not hurry. It still arrives."). One stays with you at the finale.
 
 - **Endless loop**: a new switch in the run settings panel. There is no pool; a marble that leaves the last part comes back in at the top, and the run goes on until you stop it. It takes effect at the next Release (the panel says so if you flip it mid-run), is remembered, and Reset turns it off.
 - The track is drawn as one continuous column that repeats, so the join between the last part and the source is just another hand-over. The camera follows the flock down without end, and you can drag or scroll past the end too, also while building.

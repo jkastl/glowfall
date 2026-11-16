@@ -2,6 +2,7 @@ import type { Body, ChainShape, CircleShape, EdgeShape, Fixture, PolygonShape } 
 import { fixtureData } from './build';
 import { COLUMN_W, MARBLE_COLORS, MARBLE_R, PORT_X0, PORT_X1 } from './constants';
 import type { Simulation } from './sim';
+import { Scenery } from './scenery';
 import type { FixtureStyle } from './types';
 
 export interface Camera {
@@ -166,6 +167,8 @@ export class Renderer {
   private bloomB = document.createElement('canvas');
   /** Screen-space bloom (cheap downsample blur). */
   bloom = true;
+  /** Parallax background life and the plants & animals on the outside of the walls. */
+  private scenery = new Scenery();
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -269,9 +272,10 @@ export class Renderer {
     g.fillStyle = cg;
     g.fillRect(colX - colW * 0.2, 0, colW * 1.4, h);
 
-    // --- Motes (parallax plankton)
-    g.globalCompositeOperation = 'lighter';
+    // --- Far scenery (kelp, jellyfish, a fish shoal), then motes (parallax plankton)
     const drift = cam.drift ?? cam.y * cam.scale * 0.08;
+    this.scenery.drawBack(g, w, h, drift, t, colX, colX + colW);
+    g.globalCompositeOperation = 'lighter';
     for (const m of this.motes) {
       const sy = ((m.y - drift * m.z) % h + h) % h;
       const sx = (m.x * w + Math.sin(t * 0.15 + m.phase) * 12) % w;
@@ -328,6 +332,9 @@ export class Renderer {
    */
   private drawWorld(sim: Simulation, viewTop: number, viewBot: number, t: number, opts: DrawOptions) {
     const g = this.g;
+
+    // Plants and creatures on the outside of the walls, behind everything else in this copy.
+    this.scenery.drawWalls(g, sim, viewTop, viewBot, t);
 
     // Editing overlays
     if (opts.editing) {

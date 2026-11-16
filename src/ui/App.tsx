@@ -7,6 +7,7 @@ import { PRESETS } from '../tracks/presets';
 import { DEFAULT_FEEL, FeelPanel, type Feel } from './FeelPanel';
 import { IconBack, IconMute, IconPause, IconPlay, IconReplay, IconSound, IconTune } from './icons';
 import { Panel } from './Panel';
+import { Quotes } from './Quotes';
 import { Stage } from './Stage';
 import { justUpdatedFrom, registerServiceWorker } from '../pwa';
 import { VERSION } from '../version';
@@ -300,6 +301,7 @@ export function App() {
         </div>
 
         {toast && <div className="toast">{toast}</div>}
+        <Quotes mode={mode} />
         {mode === 'done' && <div className="finale-msg">All the light has settled.</div>}
       </main>
     </div>

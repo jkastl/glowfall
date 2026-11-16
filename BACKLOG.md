@@ -1,6 +1,6 @@
 # Glowfall: ideas for later
 
-v1 is deliberately simple: build a column of parts, release 30 marbles, watch them settle (or, since v1.2.0, circle endlessly). Here's the pile of "wouldn't it be nice", roughly grouped and ordered by bang-for-buck within each group.
+v1 is deliberately simple: build a column of parts, release 30 marbles, watch them settle (or, since v1.1.0, circle endlessly). Here's the pile of "wouldn't it be nice", roughly grouped and ordered by bang-for-buck within each group.
 
 ## Run controls
 - ~~**Speed control**~~: done in v1.0.0 (0.25×–3×).
@@ -8,14 +8,14 @@ v1 is deliberately simple: build a column of parts, release 30 marbles, watch th
 - **Friction**: a global multiplier, like bounce. Needs the same extremes sweep (`tests/feel.test.ts`).
 - **Marble count & release rate**: 5 → 100, trickle vs. flood.
 - **Marble size**: a few sizes, possibly mixed in one run (the port is ~4 diameters wide, so this caps out around 1.5×).
-- ~~**Loop mode**~~: done in v1.2.0 as "Endless loop". Instead of a lift, the column wraps around: marbles leaving the last part re-enter the source, and the camera follows them down forever. Still open: a "lead marble" camera mode and a slow auto-drift camera (see Camera modes).
+- ~~**Loop mode**~~: done in v1.1.0 as "Endless loop". Instead of a lift, the column wraps around: marbles leaving the last part re-enter the source, and the camera follows them down forever. Still open: a "lead marble" camera mode and a slow auto-drift camera (see Camera modes).
 - **Step / scrub**: single-step physics, or rewind via recorded snapshots.
 
 ## Look & feel
 - **Themes**: the other moods we talked about (soft pastel dusk, warm wooden toy, paper cutout), plus day/night. Renderer styles are already centralized in `drawFixture` / `Renderer.draw`, so a theme is mostly a palette + stroke recipe + background.
 - **Marble palettes**: user-picked colors, gradients, "all one color", rainbow-by-order.
 - **Camera modes**: follow flock (current), follow leader, follow straggler, free/manual, slow cinematic auto-pan, zoom-to-fit the whole track.
-- **Depth effects**: parallax background layers, faint caustics, bubbles kicked up by fast marbles, particles on impact.
+- ~~**Parallax background**~~ and wall plants/animals: done in v1.1.0. Still open: faint caustics, bubbles kicked up by fast marbles, particles on impact.
 - **Part accent hues**: let users tint individual parts.
 - **Performance knobs**: bloom on/off, trail length, mote count. (An auto-quality governor already drops bloom on slow frames.)
 - **Haptics** on supported devices for big impacts.
@@ -38,7 +38,7 @@ v1 is deliberately simple: build a column of parts, release 30 marbles, watch th
 ## Sound
 - **Key / mood selector** (pentatonic major, minor, Japanese in-sen, whole-tone dream).
 - **Instrument per part** (kalimba, glass, wood block, bell), and per-part volume.
-- **Pad on/off** and a master volume slider.
+- ~~**Pad level**~~: Background slider done in v1.1.0. Still open: a master volume slider.
 - **Rolling sound** (soft continuous rumble based on rolling speed).
 
 ## Game-ish modes (optional, still chill)

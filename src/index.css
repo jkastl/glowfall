@@ -202,3 +202,18 @@ html, body, #root { margin: 0; height: 100%; background: var(--bg); color: var(-
 .feel-switch input:focus-visible + .feel-knob { outline: 2px solid rgba(160, 240, 255, 0.7); outline-offset: 2px; }
 .feel-ends.pending { color: #9fd8ef; }
 .fixed-loop { display: inline-block; width: 8px; text-align: center; color: #8ff; text-shadow: 0 0 10px #6ef; line-height: 1; }
+
+/* ---------- quotes ---------- */
+.quote {
+  position: absolute; z-index: 4; left: 50%; transform: translateX(-50%); bottom: max(34px, env(safe-area-inset-bottom));
+  width: min(560px, calc(100% - 400px)); text-align: center; pointer-events: none;
+  font-size: 17px; line-height: 1.45; letter-spacing: 0.05em; font-style: italic; color: #cdeefa;
+  text-shadow: 0 0 18px rgba(120, 230, 255, 0.45), 0 0 2px rgba(0, 0, 0, 0.8);
+  opacity: 0; transition: opacity 2.4s ease;
+}
+.quote.on { opacity: 0.82; }
+.quote-finale { top: calc(18% + 54px); bottom: auto; opacity: 0; animation: fadein 3s ease 1.6s forwards; font-size: 18px; }
+@media (max-width: 700px) {
+  .quote { left: 16px; transform: none; width: auto; right: 170px; text-align: left; font-size: 15px; }
+  .quote-finale { right: 16px; text-align: center; }
+}

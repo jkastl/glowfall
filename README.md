@@ -4,7 +4,7 @@ A zen, bioluminescent 2D marble run. Stack parts into a single column, drop the 
 
 **Play:** https://jkastl.github.io/glowfall/ (built for iPad in landscape, also fine on desktop)
 
-The sliders button (top right) sets **speed** (0.25×–3×), **gravity** (0.3×–2×) and **bounce** (0–2×). Changes apply live, even mid-run, and are remembered.
+The sliders button (top right) sets **speed** (0.25×–3×), **gravity** (0.3×–2×), **bounce** (0–2×) and the **background** sound level. Changes apply live, even mid-run, and are remembered.
 
 **Endless loop**, in the same panel, turns the run into a screensaver: there is no pool, marbles that leave the last part come back in at the top, and the camera follows them down forever. It takes effect at the next Release, and the screen stays awake while a run is going.
 
