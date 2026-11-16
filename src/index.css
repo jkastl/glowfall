@@ -182,3 +182,23 @@ html, body, #root { margin: 0; height: 100%; background: var(--bg); color: var(-
   backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); animation: toast 4s ease forwards;
 }
 @keyframes toast { 0% { opacity: 0; } 10%, 80% { opacity: 1; } 100% { opacity: 0; } }
+
+/* ---------- endless loop ---------- */
+.feel-switch { cursor: pointer; touch-action: manipulation; }
+.feel-switch .feel-label { align-items: center; min-height: 36px; position: relative; }
+.feel-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; right: 0; }
+.feel-knob {
+  position: relative; flex: none; width: 52px; height: 30px; border-radius: 999px; background: rgba(120, 220, 255, 0.1);
+  border: 1px solid rgba(120, 220, 255, 0.25); transition: background 0.25s ease, border-color 0.25s ease;
+}
+.feel-knob::after {
+  content: ''; position: absolute; top: 2px; left: 2px; width: 24px; height: 24px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #c8d8e8, #7f93ad); transition: transform 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+}
+.feel-switch input:checked + .feel-knob { background: rgba(90, 230, 255, 0.28); border-color: rgba(140, 235, 255, 0.6); }
+.feel-switch input:checked + .feel-knob::after {
+  transform: translateX(22px); background: radial-gradient(circle at 35% 30%, #eaffff, #6fe6ff 45%, #5a4cff); box-shadow: 0 0 16px rgba(100, 230, 255, 0.6);
+}
+.feel-switch input:focus-visible + .feel-knob { outline: 2px solid rgba(160, 240, 255, 0.7); outline-offset: 2px; }
+.feel-ends.pending { color: #9fd8ef; }
+.fixed-loop { display: inline-block; width: 8px; text-align: center; color: #8ff; text-shadow: 0 0 10px #6ef; line-height: 1; }

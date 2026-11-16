@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { COLUMN_W } from '../engine/constants';
-import { Renderer, type Camera } from '../engine/render';
+import { MOTE_PERIOD, Renderer, type Camera } from '../engine/render';
 import type { Simulation } from '../engine/sim';
 
 export interface StageProps {
@@ -64,6 +64,12 @@ export function Stage(props: StageProps) {
       const bot = sim.totalHeight + 1 - halfView();
       return bot < top ? (top + bot) / 2 : Math.max(top, Math.min(bot, y));
     };
+    // A looping track repeats every totalHeight and its camera is never clamped.
+    const period = (sim: Simulation) => (sim.loop ? sim.totalHeight : 0);
+    const mod = (v: number, n: number) => ((v % n) + n) % n;
+    /** The copy of world y (one per period H) that is closest to `ref`. */
+    const nearest = (y: number, ref: number, H: number) => y + Math.round((ref - y) / H) * H;
+    let prevY = cam.y; // camera y at the end of the last frame, for the parallax drift
 
     // --- Input: drag / wheel to pan, tap to pick.
     let dragging = false;
@@ -100,6 +106,8 @@ export function Stage(props: StageProps) {
         if (p.editing && p.onPick) {
           const r = canvas.getBoundingClientRect();
           const w = renderer.toWorld(cam, e.clientX - r.left, e.clientY - r.top);
+          const H = period(p.sim);
+          if (H) w.y = mod(w.y, H);
           const hit = p.sim.parts.find((pt) => w.y >= pt.originY && w.y < pt.originY + pt.height && !pt.def.hidden);
           if (w.x >= -1 && w.x <= COLUMN_W + 1) p.onPick(hit ? hit.uid : null);
         }
@@ -136,8 +144,10 @@ export function Stage(props: StageProps) {
       const p = propsRef.current;
       const sim = p.sim;
 
+      const H = period(sim);
+
       if (simRef.current !== sim) {
-        if (!simRef.current || p.editing === false) cam.y = clamp(-100, sim);
+        if (!simRef.current || p.editing === false) cam.y = prevY = H ? -3 + halfView() : clamp(-100, sim);
         simRef.current = sim;
         finaleRef.current = 0;
       }
@@ -151,14 +161,32 @@ export function Stage(props: StageProps) {
           vel *= Math.exp(-dt * 3.5);
         }
         if (glideRef.current != null) {
-          cam.y += (glideRef.current - cam.y) * (1 - Math.exp(-dt * 4));
-          if (Math.abs(glideRef.current - cam.y) < 0.02) glideRef.current = null;
+          // Looping: glide to the nearest copy, which may be across the seam.
+          const goal = H ? nearest(glideRef.current, cam.y, H) : glideRef.current;
+          cam.y += (goal - cam.y) * (1 - Math.exp(-dt * 4));
+          if (Math.abs(goal - cam.y) < 0.02) glideRef.current = null;
         } else if (!p.editing && sim.started && now > manualUntil) {
-          const target = p.finale ? sim.totalHeight - 4 : sim.focusY();
-          cam.y += (clamp(target, sim) - cam.y) * (1 - Math.exp(-dt * 1.3));
+          if (H) {
+            // The flock's focus keeps descending (it is unwrapped), and every copy of the track
+            // shows the same marbles, so following the nearest copy is one long smooth descent.
+            cam.y += (nearest(sim.focusY(), cam.y, H) - cam.y) * (1 - Math.exp(-dt * 1.3));
+          } else {
+            const target = p.finale ? sim.totalHeight - 4 : sim.focusY();
+            cam.y += (clamp(target, sim) - cam.y) * (1 - Math.exp(-dt * 1.3));
+          }
         }
       }
-      cam.y = clamp(cam.y, sim);
+      if (H) {
+        // Let the plankton drift on with the camera, then fold the camera back into one period.
+        // The view is identical every H, so the fold can't be seen, and nothing grows over hours.
+        const drift = (cam.drift ?? prevY * cam.scale * 0.08) + (cam.y - prevY) * cam.scale * 0.08;
+        cam.drift = mod(drift, MOTE_PERIOD * Math.max(1, renderer.height));
+        cam.y = mod(cam.y, H);
+      } else {
+        cam.y = clamp(cam.y, sim);
+        cam.drift = undefined;
+      }
+      prevY = cam.y;
       const targetScale = renderer.fitScale() * (p.editing ? 0.8 : 1);
       cam.scale += (targetScale - cam.scale) * (1 - Math.exp(-dt * 3));
       const targetOff = (p.insetLeft ?? 0) / 2;

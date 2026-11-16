@@ -7,8 +7,10 @@ export interface Feel {
   speed: number;
   gravity: number;
   bounce: number;
+  /** Endless mode: no pool, the marbles come round again. Takes effect at the next release. */
+  loop: boolean;
 }
-export const DEFAULT_FEEL: Feel = { speed: 1, gravity: 1, bounce: 1 };
+export const DEFAULT_FEEL: Feel = { speed: 1, gravity: 1, bounce: 1, loop: false };
 
 function Slider(props: {
   label: string;
@@ -49,16 +51,30 @@ function Slider(props: {
   );
 }
 
-/** Popover with the run settings: speed, gravity, bounce. Changes apply live, even mid-run. */
-export function FeelPanel({ feel, onChange }: { feel: Feel; onChange: (f: Feel) => void }) {
-  const changed = feel.speed !== 1 || feel.gravity !== 1 || feel.bounce !== 1;
+/**
+ * Popover with the run settings: speed, gravity, bounce, and the endless loop. The sliders apply
+ * live, even mid-run. The loop decides how a run is built, so mid-run it waits for the next release;
+ * `loopPending` says the current run doesn't match the switch yet.
+ */
+export function FeelPanel({ feel, onChange, loopPending }: { feel: Feel; onChange: (f: Feel) => void; loopPending?: boolean }) {
+  const changed = feel.speed !== 1 || feel.gravity !== 1 || feel.bounce !== 1 || feel.loop;
   return (
     <div className="feel" role="dialog" aria-label="Run settings">
       <Slider label="Speed" lo="Slow-mo" hi="Brisk" value={feel.speed} range={SPEED_RANGE} onChange={(speed) => onChange({ ...feel, speed })} />
       <Slider label="Gravity" lo="Drifting" hi="Heavy" value={feel.gravity} range={GRAVITY_RANGE} onChange={(gravity) => onChange({ ...feel, gravity })} />
       <Slider label="Bounce" lo="Soft" hi="Lively" value={feel.bounce} range={BOUNCE_RANGE} onChange={(bounce) => onChange({ ...feel, bounce })} />
+      <label className="feel-row feel-switch">
+        <span className="feel-label">
+          Endless loop
+          <input type="checkbox" role="switch" checked={feel.loop} onChange={(e) => onChange({ ...feel, loop: e.target.checked })} />
+          <span className="feel-knob" aria-hidden="true" />
+        </span>
+        <span className={`feel-ends${loopPending ? ' pending' : ''}`}>
+          <span>{loopPending ? 'Applies on the next release.' : 'No pool: the marbles come round again.'}</span>
+        </span>
+      </label>
       <div className="feel-foot">
-        <span className="feel-hint">Applies live, even mid-run.</span>
+        <span className="feel-hint">Sliders apply live, even mid-run.</span>
         <button className="feel-reset" disabled={!changed} onClick={() => onChange(DEFAULT_FEEL)}>
           Reset
         </button>

@@ -1,6 +1,6 @@
 # Glowfall: ideas for later
 
-v1 is deliberately simple: build a column of parts, release 30 marbles, watch them settle. Here's the pile of "wouldn't it be nice", roughly grouped and ordered by bang-for-buck within each group.
+v1 is deliberately simple: build a column of parts, release 30 marbles, watch them settle (or, since v1.2.0, circle endlessly). Here's the pile of "wouldn't it be nice", roughly grouped and ordered by bang-for-buck within each group.
 
 ## Run controls
 - ~~**Speed control**~~: done in v1.0.0 (0.25×–3×).
@@ -8,7 +8,7 @@ v1 is deliberately simple: build a column of parts, release 30 marbles, watch th
 - **Friction**: a global multiplier, like bounce. Needs the same extremes sweep (`tests/feel.test.ts`).
 - **Marble count & release rate**: 5 → 100, trickle vs. flood.
 - **Marble size**: a few sizes, possibly mixed in one run (the port is ~4 diameters wide, so this caps out around 1.5×).
-- **Loop mode**: an elevator/lift carries marbles from the pool back to the source so it runs forever as a screensaver. Includes a "lead marble" camera mode and an auto-drift camera.
+- ~~**Loop mode**~~: done in v1.2.0 as "Endless loop". Instead of a lift, the column wraps around: marbles leaving the last part re-enter the source, and the camera follows them down forever. Still open: a "lead marble" camera mode and a slow auto-drift camera (see Camera modes).
 - **Step / scrub**: single-step physics, or rewind via recorded snapshots.
 
 ## Look & feel

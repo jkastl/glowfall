@@ -24,6 +24,8 @@ export interface PanelProps {
   onSelect: (uid: string | null) => void;
   onAdd: (partId: string) => void;
   onPreset: (presetId: string) => void;
+  /** Endless mode: the track ends by returning to the top instead of in the pool. */
+  loop?: boolean;
 }
 
 function Row({ item, index, selected, onSelect, onRemove }: { item: TrackItem; index: number; selected: boolean; onSelect: () => void; onRemove: () => void }) {
@@ -68,7 +70,7 @@ function Row({ item, index, selected, onSelect, onRemove }: { item: TrackItem; i
   );
 }
 
-export function Panel({ track, selected, onChange, onSelect, onAdd, onPreset }: PanelProps) {
+export function Panel({ track, selected, onChange, onSelect, onAdd, onPreset, loop }: PanelProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -132,9 +134,18 @@ export function Panel({ track, selected, onChange, onSelect, onAdd, onPreset }: 
             </SortableContext>
           </DndContext>
           {track.length === 0 && <li className="empty">Tap parts below to add them.</li>}
-          <li className="row fixed">
-            <span className="fixed-dot" /> Pool
-          </li>
+          {loop ? (
+            <li className="row fixed">
+              <span className="fixed-loop" aria-hidden="true">
+                ↻
+              </span>{' '}
+              Back to the top
+            </li>
+          ) : (
+            <li className="row fixed">
+              <span className="fixed-dot" /> Pool
+            </li>
+          )}
         </ol>
       </section>
 

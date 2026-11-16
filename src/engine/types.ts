@@ -26,6 +26,8 @@ export interface Marble {
   colorIndex: number;
   /** Ring buffer of recent world positions for trails. */
   trail: { x: number; y: number }[];
+  /** Looping tracks: trips through the whole column, relative to Simulation.lapBase. */
+  laps: number;
   collected: boolean;
   stillTime: number;
   nudges: number;

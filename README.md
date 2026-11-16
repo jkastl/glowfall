@@ -6,6 +6,8 @@ A zen, bioluminescent 2D marble run. Stack parts into a single column, drop the 
 
 The sliders button (top right) sets **speed** (0.25×–3×), **gravity** (0.3×–2×) and **bounce** (0–2×). Changes apply live, even mid-run, and are remembered.
 
+**Endless loop**, in the same panel, turns the run into a screensaver: there is no pool, marbles that leave the last part come back in at the top, and the camera follows them down forever. It takes effect at the next Release, and the screen stays awake while a run is going.
+
 **Install it:** in Safari on the iPad, Share → Add to Home Screen. It opens full-screen and works offline.
 
 ## Develop
@@ -17,7 +19,7 @@ npm test             # physics harness: every part must pass marbles through its
 npm run build        # builds the site into dist/ (tools/deploy-build.sh publishes it)
 ```
 
-`tests/feel.test.ts` runs every part and every starter track at the four corners of the gravity/bounce range.
+`tests/feel.test.ts` runs every part and every starter track at the four corners of the gravity/bounce range. `tests/loop.test.ts` soaks every starter track in endless mode (30 simulated minutes for one of them; `SOAK_MIN=240` for longer) and checks that the marbles keep circulating and that the world, the logs and the heap don't grow. `tests/loop-feel.test.ts` does the endless mode at the same four corners.
 
 Dev preview of a single part: `/?solo=<partId>&marbles=20&t=8` (where `t` fast-forwards the sim).
 

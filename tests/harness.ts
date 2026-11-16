@@ -1,6 +1,7 @@
 import { COLUMN_W, PORT_X0, PORT_X1, MARBLE_R, STEP_DT } from '../src/engine/constants';
 import { Simulation } from '../src/engine/sim';
 import type { PartDef } from '../src/engine/types';
+import { PART_MAP } from '../src/parts';
 
 export interface PartReport {
   id: string;
@@ -96,3 +97,14 @@ export function formatReport(r: PartReport) {
     (r.notes.length ? '\n    ' + r.notes.join('\n    ') : '')
   );
 }
+
+/** A started 30-marble run of the given parts in endless (loop) mode. */
+export function loopSim(ids: string[], opts: { seed?: number; gravity?: number; bounce?: number } = {}) {
+  const track = ids.filter((id) => PART_MAP.has(id)).map((id, i) => ({ item: { uid: `t${i}`, partId: id }, def: PART_MAP.get(id)! }));
+  const sim = new Simulation(track, { marbleCount: 30, loop: true, ...opts });
+  sim.start();
+  return sim;
+}
+
+/** Laps completed by each marble since the start of a looping run. */
+export const lapsOf = (sim: Simulation) => sim.marbles.map((m) => sim.lapBase + m.laps);

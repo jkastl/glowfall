@@ -11,7 +11,16 @@ export interface Camera {
   scale: number;
   /** Horizontal shift of the column center from the canvas center, CSS px. */
   offsetX?: number;
+  /**
+   * Background parallax scroll, CSS px. Left unset, it follows `y`. A looping track sets it, because
+   * there `y` wraps every lap while the plankton should drift on; keep it modulo
+   * MOTE_PERIOD × view height, which is one whole turn for every mote.
+   */
+  drift?: number;
 }
+
+/** Mote depths are multiples of 1/MOTE_PERIOD, so Camera.drift can wrap without a jump. */
+export const MOTE_PERIOD = 20;
 
 export interface DrawOptions {
   /** Building mode: show part outlines, ports, highlight. */
@@ -119,6 +128,11 @@ export function drawFixture(g: CanvasRenderingContext2D, f: Fixture, body: Body,
     g.fillStyle = `hsla(${hue}, 90%, ${style.kind === 'peg' ? 60 : 45}%, ${(style.kind === 'peg' ? 0.35 : 0.1) * base + flash * 0.35})`;
     g.fill();
   }
+  strokeGlow(g, hue, base, flash, w);
+}
+
+/** Stroke the current path as a glowing line: a soft halo, then the bright core. */
+function strokeGlow(g: CanvasRenderingContext2D, hue: number, base: number, flash: number, w: number) {
   // Soft inner halo; the screen-space bloom pass does the rest.
   g.lineCap = 'round';
   g.lineJoin = 'round';
@@ -161,7 +175,7 @@ export class Renderer {
       this.motes.push({
         x: rnd(),
         y: rnd() * 400,
-        z: 0.15 + rnd() * 0.6,
+        z: (3 + Math.floor(rnd() * 13)) / MOTE_PERIOD, // 0.15–0.75
         r: 0.5 + rnd() * 1.8,
         hue: [186, 200, 268, 150, 300][Math.floor(rnd() * 5)],
         phase: rnd() * TAU,
@@ -228,7 +242,11 @@ export class Renderer {
   draw(sim: Simulation, cam: Camera, t: number, opts: DrawOptions = {}) {
     const g = this.g;
     const { w, h, dpr } = this;
-    const depth = sim.totalHeight > 0 ? Math.max(0, Math.min(1, cam.y / sim.totalHeight)) : 0;
+    const H = sim.totalHeight;
+    const loop = sim.loop && H > 0;
+    // A looping track has no deepest point: the water darkens toward the middle of each lap and
+    // lightens again, so the colour is the same on both sides of the seam.
+    const depth = loop ? 0.5 - 0.5 * Math.cos((cam.y / H) * TAU) : H > 0 ? Math.max(0, Math.min(1, cam.y / H)) : 0;
 
     // --- Background: deep water that gets darker & more violet with depth.
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -253,8 +271,9 @@ export class Renderer {
 
     // --- Motes (parallax plankton)
     g.globalCompositeOperation = 'lighter';
+    const drift = cam.drift ?? cam.y * cam.scale * 0.08;
     for (const m of this.motes) {
-      const sy = ((m.y - cam.y * cam.scale * m.z * 0.08) % h + h) % h;
+      const sy = ((m.y - drift * m.z) % h + h) % h;
       const sx = (m.x * w + Math.sin(t * 0.15 + m.phase) * 12) % w;
       const a = 0.25 + 0.2 * Math.sin(t * 0.6 + m.phase);
       const s = m.r * 6 * m.z * 2;
@@ -267,10 +286,48 @@ export class Renderer {
     const sc = cam.scale * dpr;
     const tx = (cx - (COLUMN_W / 2) * cam.scale) * dpr;
     const ty = (h / 2 - cam.y * cam.scale) * dpr;
-    g.setTransform(sc, 0, 0, sc, tx, ty);
-
     const viewTop = cam.y - h / 2 / cam.scale - 2;
     const viewBot = cam.y + h / 2 / cam.scale + 2;
+
+    if (!loop) {
+      g.setTransform(sc, 0, 0, sc, tx, ty);
+      this.drawWorld(sim, viewTop, viewBot, t, opts);
+      // Frame (side walls)
+      drawBodies(g, [sim.frame], 1);
+    } else {
+      // The track repeats every H. Draw one copy per period that reaches into the view (usually
+      // one, two at the seam); inside each copy, parts and marbles are culled as usual, so a
+      // second copy only costs what it actually shows.
+      const k0 = Math.floor((viewTop - 1) / H);
+      const k1 = Math.floor((viewBot + 2) / H);
+      for (let k = k0; k <= k1; k++) {
+        g.setTransform(sc, 0, 0, sc, tx, ty + k * H * sc);
+        this.drawWorld(sim, viewTop - k * H, viewBot - k * H, t, opts);
+      }
+      // The side walls run on forever: one stroke the height of the view, rather than a copy per
+      // period (the copies would overlap and glow twice as bright).
+      g.setTransform(sc, 0, 0, sc, tx, ty);
+      for (let f = sim.frame.getFixtureList(); f; f = f.getNext()) {
+        const style = fixtureData(f)?.style;
+        if (!style) continue;
+        const x = (f.getShape() as EdgeShape).m_vertex1.x;
+        g.beginPath();
+        g.moveTo(x, viewTop);
+        g.lineTo(x, viewBot);
+        strokeGlow(g, style.hue ?? 190, style.base ?? 0.55, style.flash ?? 0, style.width ?? 0.08);
+      }
+    }
+
+    if (this.bloom) this.applyBloom();
+    g.globalCompositeOperation = 'source-over';
+  }
+
+  /**
+   * One copy of the track between world y `viewTop` and `viewBot`: parts, marbles and overlays.
+   * Expects the world transform and 'lighter' compositing to be set.
+   */
+  private drawWorld(sim: Simulation, viewTop: number, viewBot: number, t: number, opts: DrawOptions) {
+    const g = this.g;
 
     // Editing overlays
     if (opts.editing) {
@@ -315,8 +372,6 @@ export class Renderer {
         g.globalCompositeOperation = 'lighter';
       }
     }
-    // Frame (side walls)
-    drawBodies(g, [sim.frame], 1);
 
     // Finale glow over the pool
     if (opts.finale && opts.finale > 0) {
@@ -371,8 +426,6 @@ export class Renderer {
         g.drawImage(glowSprite(c.hue), x - 0.8, y - 0.8, 1.6, 1.6);
       }
     }
-    if (this.bloom) this.applyBloom();
-    g.globalCompositeOperation = 'source-over';
   }
 }
 

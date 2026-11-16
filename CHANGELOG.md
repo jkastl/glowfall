@@ -2,6 +2,15 @@
 
 All notable changes to Glowfall. Versions follow [semver](https://semver.org/); each release is tagged `vX.Y.Z`.
 
+## 1.2.0 (2026-11-16)
+
+- **Endless loop**: a new switch in the run settings panel. There is no pool; a marble that leaves the last part comes back in at the top, and the run goes on until you stop it. It takes effect at the next Release (the panel says so if you flip it mid-run), is remembered, and Reset turns it off.
+- The track is drawn as one continuous column that repeats, so the join between the last part and the source is just another hand-over. The camera follows the flock down without end, and you can drag or scroll past the end too, also while building.
+- While looping, the counter shows "↻ lap N" instead of "N / 30 at rest", there is no finale and no "Again", and the track list ends in "↻ Back to the top" instead of "Pool".
+- The screen stays awake during a run (Screen Wake Lock, where the browser supports it), and is released on pause and when you go back to building.
+- Built to run for hours: lap counts and the camera fold back every lap so no number keeps growing, the rescue log keeps only the latest 200 entries, and the anti-jam starts each lap fresh.
+- New tests `tests/loop.test.ts` and `tests/loop-feel.test.ts`: every starter track in endless mode, one of them for 30 simulated minutes, and all of them at the four corners of the gravity/bounce range. Every marble keeps circulating with no rescues, and the body count, logs and heap stay flat.
+
 ## 1.0.1 (2026-11-15)
 
 - New home: the repo is now `jkastl/glowfall`, and the app is at https://jkastl.github.io/glowfall/, with no more `/docs/` redirect. The built site lives at the repo root, and the source page is `app.html`.

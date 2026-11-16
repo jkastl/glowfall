@@ -34,6 +34,11 @@ export interface SimOptions {
   /** Physics feel; both can also be changed live with setGravity/setBounce. */
   gravity?: number;
   bounce?: number;
+  /**
+   * Endless mode: the column is periodic. There is no collector; a marble that drops out of the
+   * last part re-enters the source one track-height higher, and the run never finishes.
+   */
+  loop?: boolean;
 }
 
 /** Slider ranges for the run-feel controls (1 = as designed). */
@@ -43,6 +48,15 @@ export const BOUNCE_RANGE = { min: 0, max: 2, step: 0.05 } as const;
 const MAX_RESTITUTION = 0.9;
 
 const TRAIL_LEN = 18;
+/** Only the most recent rescues are kept, so an endless run can't grow the log. */
+const RESCUE_LOG_MAX = 200;
+/** A looping marble wraps once it is this far below the last part, i.e. fully out of its outlet. */
+const LOOP_MARGIN = MARBLE_R + 0.05;
+/**
+ * Fall-speed limit on a looping track, world units / s. Real parts keep marbles well under it; it
+ * exists for a track that is (nearly) empty, where a marble would otherwise speed up lap after lap.
+ */
+const LOOP_MAX_FALL = 40;
 
 /** Part accent hues drift through the bioluminescent band as you descend. */
 function partHue(i: number): number {
@@ -62,8 +76,15 @@ export class Simulation {
   finishedAt = 0;
   spawned = 0;
   rescues = 0;
-  /** Where/why rescues happened (debugging part designs). */
+  /** Where/why the most recent rescues happened (debugging part designs). Capped at RESCUE_LOG_MAX. */
   rescueLog: { t: number; x: number; y: number; part: string; reason: string }[] = [];
+  /** Endless mode (see SimOptions.loop). */
+  readonly loop: boolean;
+  /**
+   * Laps every marble has completed. Per-marble `laps` are kept relative to this, so they (and the
+   * unwrapped positions the camera follows) stay small however long the run lasts.
+   */
+  lapBase = 0;
   readonly marbleCount: number;
   readonly spawnInterval: number;
   private nextSpawnAt = 0;
@@ -89,11 +110,13 @@ export class Simulation {
     this.world = new World({ gravity: Vec2(0, GRAVITY) });
     this.setGravity(opts.gravity ?? 1);
     this.bounce = opts.bounce ?? 1;
+    this.loop = !!opts.loop && !opts.bare;
 
     const seq: { uid: string; def: PartDef }[] = [];
     if (!opts.bare) seq.push({ uid: '__hopper', def: hopper });
     for (const t of track) seq.push({ uid: t.item.uid, def: t.def });
-    if (!opts.bare) seq.push({ uid: '__collector', def: collector });
+    // Looping: no pool. The source doubles as the funnel at the seam.
+    if (!opts.bare && !this.loop) seq.push({ uid: '__collector', def: collector });
 
     let y = 0;
     seq.forEach((s, i) => {
@@ -163,6 +186,7 @@ export class Simulation {
       group: color.group,
       colorIndex: ci,
       trail: [],
+      laps: 0,
       collected: false,
       stillTime: 0,
       nudges: 0,
@@ -282,7 +306,10 @@ export class Simulation {
 
     for (const m of this.marbles) this.tendMarble(m, dt);
 
+    if (this.loop) this.shedLaps();
+
     if (
+      !this.loop &&
       !this.finished &&
       this.started &&
       this.spawned >= this.marbleCount &&
@@ -297,8 +324,36 @@ export class Simulation {
     }
   }
 
+  /**
+   * Once every marble has a lap behind it, take one off them all. The per-marble counts are only
+   * ever compared with each other, so this is invisible; it just keeps them from growing.
+   */
+  private shedLaps() {
+    if (this.spawned < this.marbleCount || this.marbles.length === 0) return;
+    for (const m of this.marbles) if (m.laps < 1) return;
+    for (const m of this.marbles) m.laps--;
+    this.lapBase++;
+  }
+
+  /** Carry a marble that has left the bottom of a looping track back to the top: same x, same motion. */
+  private wrap(m: Marble) {
+    const H = this.totalHeight;
+    const p = m.body.getPosition();
+    m.body.setPosition(Vec2(p.x, p.y - H));
+    // Move the trail with it, so the periodic renderer draws one unbroken streak across the seam.
+    for (const q of m.trail) q.y -= H;
+    m.laps++;
+    // A fresh lap gets a fresh anti-jam record; otherwise "furthest point reached" would sit a lap
+    // below the marble, and nudges collected over many laps would add up to a false "stuck".
+    m.bestY = p.y - H;
+    m.bestYAt = this.t;
+    m.stillTime = 0;
+    m.nudges = 0;
+  }
+
   /** Trails, fades and anti-jam care for one marble. */
   private tendMarble(m: Marble, dt: number) {
+    if (this.loop && m.body.getPosition().y > this.totalHeight + LOOP_MARGIN) this.wrap(m);
     const p = m.body.getPosition();
     m.fade = Math.min(1, m.fade + dt * 3);
 
@@ -320,6 +375,7 @@ export class Simulation {
     }
 
     const v = m.body.getLinearVelocity();
+    if (this.loop && v.y > LOOP_MAX_FALL) m.body.setLinearVelocity(Vec2(v.x, LOOP_MAX_FALL));
     const speed = Math.hypot(v.x, v.y);
     const held = this.inHoldZone(p.x, p.y);
 
@@ -362,7 +418,10 @@ export class Simulation {
     return this.parts.length - 1;
   }
 
-  /** Quietly teleport a marble to the inlet of part `index` (fades back in). */
+  /**
+   * Quietly teleport a marble to the inlet of part `index` (fades back in).
+   * On a looping track, one past the last part means the top again, and counts as a lap.
+   */
   rescue(m: Marble, index: number, reason = 'manual') {
     const from = m.body.getPosition();
     const fromPart = this.parts[this.partIndexAt(from.y)];
@@ -373,6 +432,11 @@ export class Simulation {
       part: fromPart?.def.id ?? '?',
       reason,
     });
+    if (this.rescueLog.length > RESCUE_LOG_MAX) this.rescueLog.shift();
+    if (this.loop && index >= this.parts.length) {
+      index = 0;
+      m.laps++;
+    }
     const i = Math.max(0, Math.min(index, this.parts.length - 1));
     const target = this.parts[i];
     const x = PORT_CENTER + (this.rng() - 0.5) * 0.5;
@@ -390,16 +454,36 @@ export class Simulation {
     this.rescues++;
   }
 
-  /** Where the camera should look: the heart of the moving flock. */
+  /**
+   * Where the camera should look: the heart of the moving flock.
+   * On a looping track this is in unwrapped coordinates (y + laps × totalHeight), so it keeps
+   * descending across the seam. It drops by one totalHeight whenever a lap is shed; the track
+   * looks the same every totalHeight, so the camera follows whichever copy is nearest.
+   */
   focusY(): number {
     const active = this.marbles.filter((m) => !m.collected);
     if (active.length === 0) {
       if (this.marbles.length > 0) return this.totalHeight - 5;
       return 6;
     }
-    const ys = active.map((m) => m.body.getPosition().y).sort((a, b) => a - b);
+    const H = this.loop ? this.totalHeight : 0;
+    const ys = active.map((m) => m.body.getPosition().y + m.laps * H).sort((a, b) => a - b);
     // Lean toward the leaders a bit so you see where things are heading.
     return ys[Math.floor(ys.length * 0.6)] + 1.5;
+  }
+
+  /** The lap the middle of the flock is on, counting from 1 (looping tracks). */
+  lap(): number {
+    if (this.marbles.length === 0) return 1;
+    const laps = this.marbles.map((m) => m.laps).sort((a, b) => a - b);
+    return this.lapBase + laps[laps.length >> 1] + 1;
+  }
+
+  /** Laps completed by all marbles together (looping tracks). */
+  totalLaps(): number {
+    let n = this.lapBase * this.marbles.length;
+    for (const m of this.marbles) n += m.laps;
+    return n;
   }
 
   collectedCount() {

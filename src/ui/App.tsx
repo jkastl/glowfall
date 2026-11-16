@@ -48,7 +48,7 @@ function loadFeel(): Feel {
     if (raw) {
       const f = JSON.parse(raw) as Partial<Feel>;
       const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
-      return { speed: num(f.speed, 1), gravity: num(f.gravity, 1), bounce: num(f.bounce, 1) };
+      return { speed: num(f.speed, 1), gravity: num(f.gravity, 1), bounce: num(f.bounce, 1), loop: f.loop === true };
     }
   } catch {
     /* storage unavailable */
@@ -59,7 +59,7 @@ function loadFeel(): Feel {
 function makeSim(track: TrackItem[], feel: Feel = DEFAULT_FEEL) {
   return new Simulation(
     track.map((item) => ({ item, def: PART_MAP.get(item.partId)! })),
-    { marbleCount: MARBLES, seed: Math.floor(Math.random() * 1e9), gravity: feel.gravity, bounce: feel.bounce },
+    { marbleCount: MARBLES, seed: Math.floor(Math.random() * 1e9), gravity: feel.gravity, bounce: feel.bounce, loop: feel.loop },
   );
 }
 
@@ -81,11 +81,13 @@ export function App() {
     return () => clearTimeout(id);
   }, [toast]);
   const [collected, setCollected] = useState(0);
+  const [lap, setLap] = useState(1);
   const [focus, setFocus] = useState<{ y: number; n: number } | null>(null);
   const audio = useRef<AmbientAudio>(null as unknown as AmbientAudio);
   if (!audio.current) audio.current = new AmbientAudio();
 
-  const previewSim = useMemo(() => makeSim(track), [track]);
+  // The preview shows the track as it will run: with the pool, or open-ended when looping.
+  const previewSim = useMemo(() => makeSim(track, { ...DEFAULT_FEEL, loop: feel.loop }), [track, feel.loop]);
   const sim = mode === 'build' || !runSim ? previewSim : runSim;
 
   useEffect(() => {
@@ -150,6 +152,7 @@ export function App() {
     s.start();
     setRunSim(s);
     setCollected(0);
+    setLap(1);
     setMode('run');
     audio.current.start();
   };
@@ -173,9 +176,35 @@ export function App() {
   // HUD counter
   useEffect(() => {
     if (!runSim) return;
-    const id = setInterval(() => setCollected(runSim.collectedCount()), 300);
+    const id = setInterval(() => (runSim.loop ? setLap(runSim.lap()) : setCollected(runSim.collectedCount())), 300);
     return () => clearInterval(id);
   }, [runSim]);
+
+  // Keep the screen awake while marbles are moving: an endless run is a screensaver, and the iPad
+  // would otherwise auto-lock a couple of minutes in. The lock is dropped on pause and back, and
+  // the browser drops it whenever the page is hidden, so it is asked for again on return.
+  useEffect(() => {
+    if (mode !== 'run' || typeof navigator === 'undefined' || !('wakeLock' in navigator)) return;
+    let lock: WakeLockSentinel | null = null;
+    let live = true;
+    const acquire = async () => {
+      if (!live || document.visibilityState !== 'visible' || (lock && !lock.released)) return;
+      try {
+        const l = await navigator.wakeLock.request('screen');
+        if (live && !(lock && !lock.released)) lock = l;
+        else void l.release().catch(() => {});
+      } catch {
+        /* refused (low battery, no permission): the run just carries on without it */
+      }
+    };
+    void acquire();
+    document.addEventListener('visibilitychange', acquire);
+    return () => {
+      live = false;
+      document.removeEventListener('visibilitychange', acquire);
+      void lock?.release().catch(() => {});
+    };
+  }, [mode]);
 
   // Pause when the tab/app goes to the background.
   useEffect(() => {
@@ -196,7 +225,7 @@ export function App() {
 
   return (
     <div className={`app mode-${mode}`}>
-      <Panel track={track} selected={selected} onChange={setTrack} onSelect={select} onAdd={add} onPreset={preset} />
+      <Panel track={track} selected={selected} onChange={setTrack} onSelect={select} onAdd={add} onPreset={preset} loop={feel.loop} />
       <main className="stage-wrap">
         <Stage
           sim={sim}
@@ -218,7 +247,15 @@ export function App() {
           )}
           {!building && (
             <div className="counter" aria-live="polite">
-              {collected} / {MARBLES} <span className="dim">at rest</span>
+              {sim.loop ? (
+                <>
+                  ↻ <span className="dim">lap</span> {lap}
+                </>
+              ) : (
+                <>
+                  {collected} / {MARBLES} <span className="dim">at rest</span>
+                </>
+              )}
             </div>
           )}
           <button
@@ -234,7 +271,7 @@ export function App() {
           </button>
         </div>
 
-        {feelOpen && <FeelPanel feel={feel} onChange={setFeel} />}
+        {feelOpen && <FeelPanel feel={feel} onChange={setFeel} loopPending={!building && sim.loop !== feel.loop} />}
 
         <div className="controls">
           {building ? (
