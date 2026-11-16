@@ -2,6 +2,18 @@
 
 All notable changes to Glowfall. Versions follow [semver](https://semver.org/); each release is tagged `vX.Y.Z`.
 
+## 1.3.0 (2026-11-16)
+
+- **Starter tracks come with their own feel.** Choosing one sets speed, gravity, bounce and Endless loop along with the parts, and a note says what changed. The Background volume is left as you set it.
+  - First Light: as designed.
+  - Clockwork Tide: heavy and soft (gravity 1.3×, bounce 0.4×, speed 0.85×).
+  - Rainfall: lively (bounce 1.6×).
+  - Grand Tour: brisk (speed 1.5×).
+- **Two new endless starter tracks**:
+  - **Moon Garden**: low gravity and high bounce through bumpers, pegs and chimes, round and round.
+  - **Night Drift**: slow and unhurried, a screensaver.
+- `tests/tracks.test.ts` runs every starter track with its own feel (endless ones: every marble laps twice) and as designed.
+
 ## 1.2.1 (2026-11-16)
 
 - No more fade across the top on the iPad. In the installed app, iOS darkens the strip behind the status bar (clock, battery) and the track was drawn underneath it. The stage now starts just below the status bar, so that strip sits over the plain background.

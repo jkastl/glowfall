@@ -3,7 +3,7 @@ import { AmbientAudio } from '../audio/audio';
 import { Simulation } from '../engine/sim';
 import type { TrackItem } from '../engine/types';
 import { PART_MAP } from '../parts';
-import { PRESETS } from '../tracks/presets';
+import { describeFeel, PRESETS } from '../tracks/presets';
 import { DEFAULT_FEEL, FeelPanel, type Feel } from './FeelPanel';
 import { IconBack, IconMute, IconPause, IconPlay, IconReplay, IconSound, IconTune } from './icons';
 import { Panel } from './Panel';
@@ -139,7 +139,16 @@ export function App() {
 
   const preset = (id: string) => {
     if (id === '__clear') setTrack([]);
-    else setTrack(fromPreset(id));
+    else {
+      setTrack(fromPreset(id));
+      // A starter track comes with its own feel; the Background volume stays the listener's.
+      const p = PRESETS.find((x) => x.id === id);
+      if (p) {
+        setFeel((f) => ({ ...f, ...p.feel }));
+        const how = describeFeel(p.feel);
+        setToast(how ? `${p.name} · ${how}` : p.name);
+      }
+    }
     setSelected(null);
     setFocus({ y: 0, n: Math.random() });
   };
