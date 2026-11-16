@@ -2,6 +2,12 @@
 
 All notable changes to Glowfall. Versions follow [semver](https://semver.org/); each release is tagged `vX.Y.Z`.
 
+## 1.3.2 (2026-11-16)
+
+- **The panel header no longer sits in the status bar's blur.** As an installed app on iPad, "Glowfall" and the Starter tracks menu were smeared by the soft band iPadOS draws under the clock. The header and the top-right buttons now start below it. Browser tabs and desktop are unchanged.
+- The installed app's status bar is now opaque instead of see-through, so the page starts beneath it on devices that honour that.
+- Phones: the bottom panel no longer reserves room for the status bar it isn't under.
+
 ## 1.3.1 (2026-11-16)
 
 - The Starter tracks menu now looks like a menu: a glowing pill with a chevron, instead of something that reads as a text field.
